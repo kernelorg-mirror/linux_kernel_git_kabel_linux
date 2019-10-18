@@ -169,6 +169,7 @@ static const enum gpiod_flags gpio_flags[] = {
 #define T_WAIT_ROLLBALL		msecs_to_jiffies(25000)
 #define T_START_UP		msecs_to_jiffies(300)
 #define T_START_UP_BAD_GPON	msecs_to_jiffies(60000)
+#define T_START_UP_COOLED	msecs_to_jiffies(90000)
 
 /* t_reset is the time required to assert the TX_DISABLE signal to reset
  * an indicated TX_FAULT.
@@ -1954,6 +1955,8 @@ static int sfp_sm_mod_probe(struct sfp *sfp, bool report)
 	if (!memcmp(id.base.vendor_name, "ALCATELLUCENT   ", 16) &&
 	    !memcmp(id.base.vendor_pn, "3FE46541AA      ", 16))
 		sfp->module_t_start_up = T_START_UP_BAD_GPON;
+	else if (id.ext.options & cpu_to_be16(SFP_OPTIONS_COOLED_XCVR))
+		sfp->module_t_start_up = T_START_UP_COOLED;
 	else
 		sfp->module_t_start_up = T_START_UP;
 
@@ -2186,10 +2189,10 @@ static void sfp_sm_main(struct sfp *sfp, unsigned int event)
 			break;
 
 		if (sfp->state & SFP_F_TX_FAULT) {
-			/* Wait up to t_init (SFF-8472) or t_start_up (SFF-8431)
-			 * from the TX_DISABLE deassertion for the module to
-			 * initialise, which is indicated by TX_FAULT
-			 * deasserting.
+			/* Wait up to t_init (SFF-8472), t_start_up (SFF-8431),
+			 * or t_start_up_cooled (SFF-8431) from the TX_DISABLE
+			 * deassertion for the module to initialise, which is
+			 * indicated by TX_FAULT deasserting.
 			 */
 			timeout = sfp->module_t_start_up;
 			if (timeout > sfp->module_t_wait)
@@ -2208,8 +2211,8 @@ static void sfp_sm_main(struct sfp *sfp, unsigned int event)
 
 	case SFP_S_INIT:
 		if (event == SFP_E_TIMEOUT && sfp->state & SFP_F_TX_FAULT) {
-			/* TX_FAULT is still asserted after t_init
-			 * or t_start_up, so assume there is a fault.
+			/* TX_FAULT is still asserted after t_init, t_start_up
+			 * or t_start_up_cooled, so assume there is a fault.
 			 */
 			sfp_sm_fault(sfp, SFP_S_INIT_TX_FAULT,
 				     sfp->sm_fault_retries == N_FAULT_INIT);
