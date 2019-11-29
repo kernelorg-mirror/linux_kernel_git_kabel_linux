@@ -2559,8 +2559,8 @@ static void phylink_sfp_link_up(void *upstream)
  */
 static bool phylink_phy_no_inband(struct phy_device *phy)
 {
-	return phy->is_c45 &&
-		(phy->c45_ids.device_ids[1] & 0xfffffff0) == 0xae025150;
+	return phy->is_c45 && phy_id_compare(phy->c45_ids.device_ids[1],
+					     0xae025150, 0xfffffff0);
 }
 
 static DECLARE_PHY_INTERFACE_MASK(phylink_sfp_interfaces);
