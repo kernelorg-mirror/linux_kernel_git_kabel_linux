@@ -28,6 +28,7 @@
 #include <linux/hwmon.h>
 #include <linux/marvell_phy.h>
 #include <linux/phy.h>
+#include <linux/property.h>
 #include <linux/sfp.h>
 #include <linux/netdevice.h>
 
@@ -124,6 +125,14 @@ enum {
 	MV_V2_33X0_PORT_CTRL_MACTYPE_10GBASER_NO_SGMII_AN	= 0x5,
 	MV_V2_33X0_PORT_CTRL_MACTYPE_10GBASER_RATE_MATCH	= 0x6,
 	MV_V2_33X0_PORT_CTRL_MACTYPE_USXGMII			= 0x7,
+	MV_V2_LED_CTRL_BASE			= 0xf020,
+	MV_V2_LED_CTRL_ON_HIGH			= BIT(0),
+	MV_V2_LED_CTRL_OFF_TRISTATE		= BIT(1),
+	MV_V2_LED_CTRL_BLINK_RATE_MASK		= BIT(2),
+	MV_V2_LED_CTRL_BLINK_RATE_1		= 0,
+	MV_V2_LED_CTRL_BLINK_RATE_2		= BIT(2),
+	MV_V2_LED_CTRL_SOLID_BEHAVIOR_MASK	= 0x00f8,
+	MV_V2_LED_CTRL_BLINK_BEHAVIOR_MASK	= 0x1f00,
 	MV_V2_PORT_INTR_STS		= 0xf040,
 	MV_V2_PORT_INTR_MASK		= 0xf043,
 	MV_V2_PORT_INTR_STS_WOL_EN	= BIT(8),
@@ -144,6 +153,7 @@ enum {
 };
 
 struct mv3310_chip {
+	u8 led_pins;
 	bool (*has_downshift)(struct phy_device *phydev);
 	void (*init_supported_interfaces)(unsigned long *mask);
 	int (*get_mactype)(struct phy_device *phydev);
@@ -165,6 +175,7 @@ struct mv3310_priv {
 
 	struct device *hwmon_dev;
 	char *hwmon_name;
+	u16 led_mode[4];
 };
 
 static const struct mv3310_chip *to_mv3310_chip(struct phy_device *phydev)
@@ -470,6 +481,161 @@ static int mv3310_set_edpd(struct phy_device *phydev, u16 edpd)
 	return err;
 }
 
+static u16 mv3310_decode_led_function(const char *mode)
+{
+	if (!strcmp(mode, "activity"))
+		return 1;
+	else if (!strcmp(mode, "tx"))
+		return 2;
+	else if (!strcmp(mode, "rx"))
+		return 3;
+	else if (!strcmp(mode, "link-copper"))
+		return 5;
+	else if (!strcmp(mode, "link-fiber"))
+		return 6;
+	else if (!strcmp(mode, "link"))
+		return 7;
+	else if (!strcmp(mode, "link-10m"))
+		return 8;
+	else if (!strcmp(mode, "link-100m"))
+		return 9;
+	else if (!strcmp(mode, "link-1g"))
+		return 10;
+	else if (!strcmp(mode, "link-10g"))
+		return 11;
+	else if (!strcmp(mode, "link-2.5g"))
+		return 21;
+	else if (!strcmp(mode, "link-5g"))
+		return 22;
+	else
+		return 0;
+}
+
+static int mv3310_fw_led_config(struct phy_device *phydev,
+				struct fwnode_handle *led)
+{
+	struct mv3310_priv *priv = dev_get_drvdata(&phydev->mdio.dev);
+	u8 led_pins = to_mv3310_chip(phydev)->led_pins;
+	u16 reg, blink, solid;
+	const char *funcs[2];
+	int ret, nfuncs;
+	u32 pin;
+
+	ret = fwnode_property_read_u32(led, "reg", &pin);
+	if (ret) {
+		phydev_err(phydev, "%pfw missing 'reg' property: %d\n", led,
+			   ret);
+		return ret;
+	}
+
+	if (pin >= led_pins) {
+		phydev_err(phydev, "%pfw 'reg' (%u) must be < %u\n", led, pin,
+			   led_pins);
+		return -EINVAL;
+	}
+
+	nfuncs = fwnode_property_read_string_array(led, "function", funcs,
+						   ARRAY_SIZE(funcs));
+	if (nfuncs < 0 && nfuncs == EINVAL)
+		return 0;
+	if (nfuncs < 0) {
+		phydev_err(phydev, "%pfw: can't read 'function': %d\n", led,
+			   nfuncs);
+		return nfuncs;
+	}
+
+	reg = priv->led_mode[pin];
+
+	if (fwnode_property_present(led, "active-low"))
+		reg &= ~MV_V2_LED_CTRL_ON_HIGH;
+	else
+		reg |= MV_V2_LED_CTRL_ON_HIGH;
+
+	if (fwnode_property_present(led, "inactive-tristate"))
+		reg |= MV_V2_LED_CTRL_OFF_TRISTATE;
+	else
+		reg &= ~MV_V2_LED_CTRL_OFF_TRISTATE;
+
+	solid = mv3310_decode_led_function(funcs[0]);
+	blink = nfuncs == 2 ? mv3310_decode_led_function(funcs[1]) : 0;
+
+	/* if only one function is defined and it is activity/tx/rx, blink */
+	if (nfuncs == 1 && solid >= 1 && solid <= 3) {
+		blink = solid;
+		solid = 0;
+	}
+
+	reg &= ~MV_V2_LED_CTRL_BLINK_BEHAVIOR_MASK;
+	reg |= blink << __ffs(MV_V2_LED_CTRL_BLINK_BEHAVIOR_MASK);
+
+	reg &= ~MV_V2_LED_CTRL_SOLID_BEHAVIOR_MASK;
+	reg |= solid << __ffs(MV_V2_LED_CTRL_SOLID_BEHAVIOR_MASK);
+
+	/* for activity blinking select blink rate 2, otherwise 1 */
+	reg &= ~MV_V2_LED_CTRL_BLINK_RATE_MASK;
+	if (blink >= 1 && blink <= 3)
+		reg |= MV_V2_LED_CTRL_BLINK_RATE_1;
+	else
+		reg |= MV_V2_LED_CTRL_BLINK_RATE_2;
+
+	priv->led_mode[pin] = reg;
+
+	return 0;
+}
+
+static int mv3310_leds_write(struct phy_device *phydev)
+{
+	struct mv3310_priv *priv = dev_get_drvdata(&phydev->mdio.dev);
+	u8 led_pins = to_mv3310_chip(phydev)->led_pins;
+	int i, ret;
+
+	for (i = 0; i < led_pins; i++) {
+		ret = phy_write_mmd(phydev, MDIO_MMD_VEND2,
+				    MV_V2_LED_CTRL_BASE + i,
+				    priv->led_mode[i]);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+/* For now we just read the LED definitions in device tree, try to translate the
+ * functions into valid modes and set the LED control registers. In the future
+ * we want to register these LEDs as Linux LED class devices, but first LED
+ * subsystem needs to offer LED trigger offloading.
+ */
+static int mv3310_fw_config(struct phy_device *phydev)
+{
+	struct mv3310_priv *priv = dev_get_drvdata(&phydev->mdio.dev);
+	u8 led_pins = to_mv3310_chip(phydev)->led_pins;
+	struct fwnode_handle *leds, *led;
+	int ret, i;
+
+	/* read LED control registers */
+	for (i = 0; i < led_pins; ++i) {
+		ret = phy_read_mmd(phydev, MDIO_MMD_VEND2, 0xf020 + i);
+		if (ret < 0)
+			return ret;
+
+		priv->led_mode[i] = ret;
+	}
+
+	/* and possibly overwrite by DT definitions */
+	leds = device_get_named_child_node(&phydev->mdio.dev, "leds");
+	if (!leds)
+		return 0;
+
+	fwnode_for_each_available_child_node(leds, led)
+		if (mv3310_fw_led_config(phydev, led))
+			dev_warn(&phydev->mdio.dev,
+				 "parsing of LED node %pfw failed\n", led);
+
+	fwnode_handle_put(leds);
+
+	return 0;
+}
+
 static int mv3310_sfp_insert(void *upstream, const struct sfp_eeprom_id *id)
 {
 	struct phy_device *phydev = upstream;
@@ -504,6 +670,16 @@ static int mv3310_probe(struct phy_device *phydev)
 	    (phydev->c45_ids.devices_in_package & mmd_mask) != mmd_mask)
 		return -ENODEV;
 
+	priv = devm_kzalloc(&phydev->mdio.dev, sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
+
+	dev_set_drvdata(&phydev->mdio.dev, priv);
+
+	ret = mv3310_fw_config(phydev);
+	if (ret < 0)
+		return ret;
+
 	ret = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, MV_PMA_BOOT);
 	if (ret < 0)
 		return ret;
@@ -513,12 +689,6 @@ static int mv3310_probe(struct phy_device *phydev)
 			 "PHY failed to boot firmware, status=%04x\n", ret);
 		priv->firmware_failed = true;
 	}
-
-	priv = devm_kzalloc(&phydev->mdio.dev, sizeof(*priv), GFP_KERNEL);
-	if (!priv)
-		return -ENOMEM;
-
-	dev_set_drvdata(&phydev->mdio.dev, priv);
 
 	ret = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, MV_PMA_FW_VER0);
 	if (ret < 0)
@@ -823,7 +993,7 @@ static int mv3310_config_init(struct phy_device *phydev)
 	if (err && err != -EOPNOTSUPP)
 		return err;
 
-	return 0;
+	return mv3310_leds_write(phydev);;
 }
 
 static int mv3310_get_features(struct phy_device *phydev)
@@ -1167,6 +1337,7 @@ static void mv2111_init_supported_interfaces(unsigned long *mask)
 }
 
 static const struct mv3310_chip mv3310_type = {
+	.led_pins = 4,
 	.has_downshift = mv3310_has_downshift,
 	.init_supported_interfaces = mv3310_init_supported_interfaces,
 	.get_mactype = mv3310_get_mactype,
@@ -1180,6 +1351,7 @@ static const struct mv3310_chip mv3310_type = {
 };
 
 static const struct mv3310_chip mv3340_type = {
+	.led_pins = 4,
 	.has_downshift = mv3310_has_downshift,
 	.init_supported_interfaces = mv3340_init_supported_interfaces,
 	.get_mactype = mv3310_get_mactype,
@@ -1193,6 +1365,7 @@ static const struct mv3310_chip mv3340_type = {
 };
 
 static const struct mv3310_chip mv2110_type = {
+	.led_pins = 3,
 	.init_supported_interfaces = mv2110_init_supported_interfaces,
 	.get_mactype = mv2110_get_mactype,
 	.set_mactype = mv2110_set_mactype,
@@ -1205,6 +1378,7 @@ static const struct mv3310_chip mv2110_type = {
 };
 
 static const struct mv3310_chip mv2111_type = {
+	.led_pins = 3,
 	.init_supported_interfaces = mv2111_init_supported_interfaces,
 	.get_mactype = mv2110_get_mactype,
 	.set_mactype = mv2110_set_mactype,
