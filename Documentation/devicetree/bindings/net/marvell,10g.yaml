@@ -1,0 +1,153 @@
+# SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/net/marvell,10g.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Marvell Alaska X/M multi-gigabit family Ethernet PHYs
+
+maintainers:
+  - Russell King <rmk+kernel@armlinux.org.uk>
+  - Marek Behún <kabel@kernel.org>
+
+select:
+  properties:
+    compatible:
+      contains:
+        enum:
+          - ethernet-phy-id002b.09aa
+          - ethernet-phy-id002b.09ab
+          - ethernet-phy-id002b.09ae
+          - ethernet-phy-id002b.09a2
+          - ethernet-phy-id002b.09a3
+          - ethernet-phy-id002b.09ac
+          - ethernet-phy-id002b.09b8
+          - ethernet-phy-id002b.09b9
+          - ethernet-phy-id002b.09b0
+          - ethernet-phy-id002b.09b1
+
+  required:
+    - compatible
+
+allOf:
+  - $ref: ethernet-phy.yaml#
+
+properties:
+  compatible:
+    items:
+      - enum:
+          # 88X3310
+          - ethernet-phy-id002b.09aa
+          - ethernet-phy-id002b.09ab
+          - ethernet-phy-id002b.09ae
+          # 88X3340
+          - ethernet-phy-id002b.09a2
+          - ethernet-phy-id002b.09a3
+          - ethernet-phy-id002b.09ac
+          # 88E2110 and 88E2111
+          - ethernet-phy-id002b.09b8
+          - ethernet-phy-id002b.09b9
+          # 88E2180 and 88E2181
+          - ethernet-phy-id002b.09b0
+          - ethernet-phy-id002b.09b1
+      - const: ethernet-phy-ieee802.3-c45
+
+  reg:
+    maxItems: 1
+
+  leds:
+    type: object
+
+    properties:
+      '#address-cells':
+        const: 1
+
+      '#size-cells':
+        const: 0
+
+    patternProperties:
+      '^led@[0-3]$':
+        type: object
+        description: |
+          This node represents a LED connected to one of the PHY's LED pins.
+
+        $ref: /schemas/leds/common.yaml#
+
+        properties:
+          reg:
+            description: |
+              Pin on the PHY to which this LED is connected to.
+            minimum: 0
+            maximum: 3
+
+          active-low:
+            description:
+              Whether the LED should be put low on ON.
+            type: boolean
+
+          inactive-tristate:
+            description:
+              Whether the LED should be tristated on OFF.
+            type: boolean
+
+          excludes:
+            description: |
+              LED that is excluded by this LED: if this LED is ON, the other
+              must be OFF. This is the case when two LEDs are connected in
+              parallel, but inversely: inverting the polarity of the source
+              turns one LED ON and the other OFF. There are RJ-45 connectors
+              with such wiring.
+            $ref: /schemas/types.yaml#/definitions/phandle
+
+          function:
+            maxItems: 2
+
+        required:
+          - reg
+
+    additionalProperties: false
+
+additionalProperties: false
+
+examples:
+  - |
+
+    #include <dt-bindings/leds/common.h>
+
+    mdio {
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        ethernet-phy@0 {
+            compatible = "ethernet-phy-id002b.09ab",
+                         "ethernet-phy-ieee802.3-c45";
+            reg = <0>;
+
+            leds {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                led@0 {
+                    reg = <0>;
+                    color = <LED_COLOR_ID_GREEN>;
+                    function = "link-copper", "activity";
+                };
+
+                phy0_led1: led@1 {
+                    reg = <1>;
+                    color = <LED_COLOR_ID_GREEN>;
+                    function = "link-10g", "link-100m";
+                    excludes = <&phy0_led2>;
+                };
+
+                phy0_led2: led@2 {
+                    reg = <2>;
+                    color = <LED_COLOR_ID_YELLOW>;
+                    function = "link-1g", "link-10m";
+                    excludes = <&phy0_led1>;
+                };
+            };
+        };
+    };
+
+...
