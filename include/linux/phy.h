@@ -151,6 +151,26 @@ typedef enum {
 	PHY_INTERFACE_MODE_MAX,
 } phy_interface_t;
 
+/* PHY interface mode bitmap handling */
+#define DECLARE_PHY_INTERFACE_MASK(name) \
+	DECLARE_BITMAP(name, PHY_INTERFACE_MODE_MAX)
+
+static inline void phy_interface_zero(unsigned long *intf)
+{
+	bitmap_zero(intf, PHY_INTERFACE_MODE_MAX);
+}
+
+static inline bool phy_interface_empty(const unsigned long *intf)
+{
+	return bitmap_empty(intf, PHY_INTERFACE_MODE_MAX);
+}
+
+static inline void phy_interface_and(unsigned long *dst, const unsigned long *a,
+				     const unsigned long *b)
+{
+	bitmap_and(dst, a, b, PHY_INTERFACE_MODE_MAX);
+}
+
 /*
  * phy_supported_speeds - return all speeds currently supported by a PHY device
  */
@@ -605,6 +625,7 @@ struct phy_device {
 
 	/* supported PHY interface types */
 	DECLARE_PHY_INTERFACE_MASK(host_interfaces);
+	DECLARE_PHY_INTERFACE_MASK(supported_interfaces);
 
 	/* Energy efficient ethernet modes which should be prohibited */
 	u32 eee_broken_modes;
