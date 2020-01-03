@@ -588,6 +588,9 @@ struct macsec_ops;
  * @master_slave_set: User requested master/slave configuration
  * @master_slave_get: Current master/slave advertisement
  * @master_slave_state: Current master/slave configuration
+ * @resolved_pause_valid: Whether resolved_tx/rx_pause fields are valid
+ * @resolved_tx_pause: Resolved TX pause
+ * @resolved_rx_pause: Resolved RX pause
  * @mii_ts: Pointer to time stamper callbacks
  * @lock:  Mutex for serialization access to PHY
  * @state_queue: Work queue for state machine
@@ -650,6 +653,15 @@ struct phy_device {
 	u8 master_slave_get;
 	u8 master_slave_set;
 	u8 master_slave_state;
+
+	/*
+	 * private to phylib: the resolved pause state - only valid if
+	 * resolved_pause_valid is true. only phy drivers and phylib
+	 * should touch this.
+	 */
+	bool resolved_pause_valid;
+	bool resolved_tx_pause;
+	bool resolved_rx_pause;
 
 	/* Union of PHY and Attached devices' supported link modes */
 	/* See ethtool.h for more info */
