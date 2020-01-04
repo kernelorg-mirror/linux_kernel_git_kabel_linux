@@ -172,6 +172,10 @@
 #define MII_M1011_PHY_STATUS_FULLDUPLEX	0x2000
 #define MII_M1011_PHY_STATUS_RESOLVED	0x0800
 #define MII_M1011_PHY_STATUS_LINK	0x0400
+#define MII_M1111_PHY_STATUS_TX_PAUSE	0x0008
+#define MII_M1111_PHY_STATUS_RX_PAUSE	0x0004
+#define MII_88E151X_PHY_STATUS_TX_PAUSE	0x0200
+#define MII_88E151X_PHY_STATUS_RX_PAUSE	0x0100
 
 #define MII_88E3016_PHY_SPEC_CTRL	0x10
 #define MII_88E3016_DISABLE_SCRAMBLER	0x0200
@@ -304,6 +308,8 @@ struct marvell_priv {
 	u32 last;
 	u32 step;
 	s8 pair;
+	u16 tx_pause_mask;
+	u16 rx_pause_mask;
 };
 
 static int marvell_read_page(struct phy_device *phydev)
@@ -1519,6 +1525,7 @@ static void fiber_lpa_mod_linkmode_lpa_t(unsigned long *advertising, u32 lpa)
 static int marvell_read_status_page_an(struct phy_device *phydev,
 				       int fiber, int status)
 {
+	struct marvell_priv *priv = phydev->priv;
 	int lpa;
 	int err;
 
@@ -1574,6 +1581,11 @@ static int marvell_read_status_page_an(struct phy_device *phydev,
 		}
 	}
 
+	phydev->resolved_tx_pause = !!(status & priv->tx_pause_mask);
+	phydev->resolved_rx_pause = !!(status & priv->rx_pause_mask);
+	phydev->resolved_pause_valid = !fiber && priv->tx_pause_mask &&
+				       priv->rx_pause_mask;
+
 	return 0;
 }
 
@@ -1617,6 +1629,7 @@ static int marvell_read_status_page(struct phy_device *phydev, int page)
 	phydev->speed = SPEED_UNKNOWN;
 	phydev->duplex = DUPLEX_UNKNOWN;
 	phydev->port = fiber ? PORT_FIBRE : PORT_TP;
+	phydev->resolved_pause_valid = false;
 
 	if (phydev->autoneg == AUTONEG_ENABLE)
 		err = marvell_read_status_page_an(phydev, fiber, status);
@@ -2730,7 +2743,8 @@ static int marvell_hwmon_probe(struct phy_device *phydev)
 }
 #endif
 
-static int marvell_probe(struct phy_device *phydev)
+static int marvell_probe_pause(struct phy_device *phydev, u16 tx_pause_mask,
+			       u16 rx_pause_mask)
 {
 	struct marvell_priv *priv;
 
@@ -2738,6 +2752,8 @@ static int marvell_probe(struct phy_device *phydev)
 	if (!priv)
 		return -ENOMEM;
 
+	priv->tx_pause_mask = tx_pause_mask;
+	priv->rx_pause_mask = rx_pause_mask;
 	phydev->priv = priv;
 
 	return marvell_hwmon_probe(phydev);
@@ -2827,11 +2843,23 @@ static const struct sfp_upstream_ops m88e1510_sfp_ops = {
 	.detach = phy_sfp_detach,
 };
 
+static int marvell_probe(struct phy_device *phydev)
+{
+	return marvell_probe_pause(phydev, 0, 0);
+}
+
+static int m88e1111_probe(struct phy_device *phydev)
+{
+	return marvell_probe_pause(phydev, MII_M1111_PHY_STATUS_TX_PAUSE,
+				   MII_M1111_PHY_STATUS_RX_PAUSE);
+}
+
 static int m88e1510_probe(struct phy_device *phydev)
 {
 	int err;
 
-	err = marvell_probe(phydev);
+	err = marvell_probe_pause(phydev, MII_88E151X_PHY_STATUS_TX_PAUSE,
+				  MII_88E151X_PHY_STATUS_RX_PAUSE);
 	if (err)
 		return err;
 
@@ -2882,7 +2910,7 @@ static struct phy_driver marvell_drivers[] = {
 		.phy_id_mask = MARVELL_PHY_ID_MASK,
 		.name = "Marvell 88E1111",
 		/* PHY_GBIT_FEATURES */
-		.probe = marvell_probe,
+		.probe = m88e1111_probe,
 		.config_init = m88e1111gbe_config_init,
 		.config_aneg = m88e1111_config_aneg,
 		.read_status = marvell_read_status,
@@ -3093,7 +3121,7 @@ static struct phy_driver marvell_drivers[] = {
 		.driver_data = DEF_MARVELL_HWMON_OPS(m88e1510_hwmon_ops),
 		/* PHY_GBIT_FEATURES */
 		.flags = PHY_POLL_CABLE_TEST,
-		.probe = marvell_probe,
+		.probe = m88e1510_probe,
 		.config_init = marvell_1011gbe_config_init,
 		.config_aneg = m88e1510_config_aneg,
 		.read_status = marvell_read_status,
@@ -3117,7 +3145,7 @@ static struct phy_driver marvell_drivers[] = {
 		.phy_id_mask = MARVELL_PHY_ID_MASK,
 		.name = "Marvell 88E1545",
 		.driver_data = DEF_MARVELL_HWMON_OPS(m88e1510_hwmon_ops),
-		.probe = marvell_probe,
+		.probe = m88e1510_probe,
 		/* PHY_GBIT_FEATURES */
 		.flags = PHY_POLL_CABLE_TEST,
 		.config_init = marvell_1011gbe_config_init,
@@ -3164,7 +3192,7 @@ static struct phy_driver marvell_drivers[] = {
 		.driver_data = DEF_MARVELL_HWMON_OPS(m88e1510_hwmon_ops),
 		/* PHY_GBIT_FEATURES */
 		.flags = PHY_POLL_CABLE_TEST,
-		.probe = marvell_probe,
+		.probe = m88e1510_probe,
 		.config_init = marvell_1011gbe_config_init,
 		.config_aneg = m88e6390_config_aneg,
 		.read_status = marvell_read_status,
