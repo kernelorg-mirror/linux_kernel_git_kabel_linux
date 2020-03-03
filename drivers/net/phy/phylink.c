@@ -2023,6 +2023,43 @@ static void phylink_sfp_detach(void *upstream, struct sfp_bus *bus)
 	pl->netdev->sfp_bus = NULL;
 }
 
+static const phy_interface_t phylink_sfp_interface_preference[] = {
+	PHY_INTERFACE_MODE_USXGMII,
+	PHY_INTERFACE_MODE_10GBASER,
+	PHY_INTERFACE_MODE_10GKR,
+	PHY_INTERFACE_MODE_5GBASER,
+	PHY_INTERFACE_MODE_2500BASEX,
+	PHY_INTERFACE_MODE_SGMII,
+	PHY_INTERFACE_MODE_1000BASEX,
+	PHY_INTERFACE_MODE_100BASEX,
+};
+
+static phy_interface_t phylink_select_interface(struct phylink *pl,
+						const unsigned long *intf,
+						const char *intf_name)
+{
+	DECLARE_PHY_INTERFACE_MASK(u);
+	phy_interface_t interface;
+	size_t i;
+
+	phy_interface_and(u, intf, pl->config->supported_interfaces);
+
+	interface = PHY_INTERFACE_MODE_NA;
+	for (i = 0; i < ARRAY_SIZE(phylink_sfp_interface_preference); i++)
+		if (test_bit(phylink_sfp_interface_preference[i], u)) {
+			interface = phylink_sfp_interface_preference[i];
+			break;
+		}
+
+	phylink_info(pl, "interfaces=[mac=%*pbl %s=%*pbl] selected %d (%s)\n",
+		     (int)PHY_INTERFACE_MODE_MAX,
+		     pl->config->supported_interfaces,
+		     intf_name, (int)PHY_INTERFACE_MODE_MAX, intf,
+		     interface, phy_modes(interface));
+
+	return interface;
+}
+
 static int phylink_sfp_config(struct phylink *pl, u8 mode,
 			      const unsigned long *supported,
 			      const unsigned long *advertising)
@@ -2105,25 +2142,33 @@ static int phylink_sfp_config(struct phylink *pl, u8 mode,
 	return ret;
 }
 
+static int phylink_sfp_config_nophy(struct phylink *pl)
+{
+	if (!phy_interface_empty(pl->config->supported_interfaces))
+		phylink_select_interface(pl, pl->sfp_interfaces, "sfp");
+
+	return phylink_sfp_config(pl, MLO_AN_INBAND,
+				  pl->sfp_support, pl->sfp_support);
+}
+
 static int phylink_sfp_module_insert(void *upstream,
 				     const struct sfp_eeprom_id *id)
 {
 	struct phylink *pl = upstream;
-	unsigned long *support = pl->sfp_support;
 
 	ASSERT_RTNL();
 
-	linkmode_zero(support);
+	linkmode_zero(pl->sfp_support);
 	phy_interface_zero(pl->sfp_interfaces);
-	sfp_parse_support(pl->sfp_bus, id, support, pl->sfp_interfaces);
-	pl->sfp_port = sfp_parse_port(pl->sfp_bus, id, support);
+	sfp_parse_support(pl->sfp_bus, id, pl->sfp_support, pl->sfp_interfaces);
+	pl->sfp_port = sfp_parse_port(pl->sfp_bus, id, pl->sfp_support);
 
 	/* If this module may have a PHY connecting later, defer until later */
 	pl->sfp_may_have_phy = sfp_may_have_phy(pl->sfp_bus, id);
 	if (pl->sfp_may_have_phy)
 		return 0;
 
-	return phylink_sfp_config(pl, MLO_AN_INBAND, support, support);
+	return phylink_sfp_config_nophy(pl);
 }
 
 static int phylink_sfp_module_start(void *upstream)
@@ -2142,8 +2187,7 @@ static int phylink_sfp_module_start(void *upstream)
 	if (!pl->sfp_may_have_phy)
 		return 0;
 
-	return phylink_sfp_config(pl, MLO_AN_INBAND,
-				  pl->sfp_support, pl->sfp_support);
+	return phylink_sfp_config_nophy(pl);
 }
 
 static void phylink_sfp_module_stop(void *upstream)
