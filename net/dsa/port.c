@@ -1153,6 +1153,17 @@ static int dsa_port_fixed_link_register_of(struct dsa_port *dp)
 	return 0;
 }
 
+void dsa_port_phylink_set_pcs(struct dsa_switch *ds, int port,
+			      struct phylink_pcs *pcs)
+{
+	struct dsa_port *dp = dsa_to_port(ds, port);
+
+	dp->pl_pcs = pcs;
+	if (dp->pl)
+		phylink_set_pcs(dp->pl, pcs);
+}
+EXPORT_SYMBOL_GPL(dsa_port_phylink_set_pcs);
+
 static int dsa_port_phylink_register(struct dsa_port *dp)
 {
 	struct dsa_switch *ds = dp->ds;
@@ -1178,6 +1189,9 @@ static int dsa_port_phylink_register(struct dsa_port *dp)
 		pr_err("error creating PHYLINK: %ld\n", PTR_ERR(dp->pl));
 		return PTR_ERR(dp->pl);
 	}
+
+	if (dp->pl_pcs)
+		phylink_set_pcs(dp->pl, dp->pl_pcs);
 
 	err = phylink_of_phy_connect(dp->pl, port_dn, 0);
 	if (err && err != -ENODEV) {

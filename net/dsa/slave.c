@@ -1883,6 +1883,9 @@ static int dsa_slave_phy_setup(struct net_device *slave_dev)
 		return PTR_ERR(dp->pl);
 	}
 
+	if (dp->pl_pcs)
+		phylink_set_pcs(dp->pl, dp->pl_pcs);
+
 	if (ds->ops->get_phy_flags)
 		phy_flags = ds->ops->get_phy_flags(ds, dp->index);
 
