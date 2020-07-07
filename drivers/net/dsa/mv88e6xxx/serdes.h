@@ -236,4 +236,6 @@ mv88e6xxx_serdes_irq_status(struct mv88e6xxx_chip *chip, int port, int lane)
 	return chip->info->ops->serdes_irq_status(chip, port, lane);
 }
 
+int mv88e6352_pcs_init(struct mv88e6xxx_chip *chip, int port);
+
 #endif

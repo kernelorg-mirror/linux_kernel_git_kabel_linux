@@ -3193,6 +3193,12 @@ static int mv88e6xxx_setup_port(struct mv88e6xxx_chip *chip, int port)
 			return err;
 	}
 
+	if (chip->info->ops->pcs_init) {
+		err = chip->info->ops->pcs_init(chip, port);
+		if (err)
+			return err;
+	}
+
 	/* Port based VLAN map: give each port the same default address
 	 * database, and allow bidirectional communication between the
 	 * CPU and DSA port(s), and the other ports.
@@ -4149,6 +4155,7 @@ static const struct mv88e6xxx_ops mv88e6172_ops = {
 	.vtu_getnext = mv88e6352_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.serdes_get_lane = mv88e6352_serdes_get_lane,
+	.pcs_init = mv88e6352_pcs_init,
 	.serdes_pcs_get_state = mv88e6352_serdes_pcs_get_state,
 	.serdes_pcs_config = mv88e6352_serdes_pcs_config,
 	.serdes_pcs_an_restart = mv88e6352_serdes_pcs_an_restart,
@@ -4247,6 +4254,7 @@ static const struct mv88e6xxx_ops mv88e6176_ops = {
 	.vtu_getnext = mv88e6352_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.serdes_get_lane = mv88e6352_serdes_get_lane,
+	.pcs_init = mv88e6352_pcs_init,
 	.serdes_pcs_get_state = mv88e6352_serdes_pcs_get_state,
 	.serdes_pcs_config = mv88e6352_serdes_pcs_config,
 	.serdes_pcs_an_restart = mv88e6352_serdes_pcs_an_restart,
@@ -4532,6 +4540,7 @@ static const struct mv88e6xxx_ops mv88e6240_ops = {
 	.vtu_getnext = mv88e6352_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.serdes_get_lane = mv88e6352_serdes_get_lane,
+	.pcs_init = mv88e6352_pcs_init,
 	.serdes_pcs_get_state = mv88e6352_serdes_pcs_get_state,
 	.serdes_pcs_config = mv88e6352_serdes_pcs_config,
 	.serdes_pcs_an_restart = mv88e6352_serdes_pcs_an_restart,
@@ -4935,6 +4944,7 @@ static const struct mv88e6xxx_ops mv88e6352_ops = {
 	.vtu_getnext = mv88e6352_g1_vtu_getnext,
 	.vtu_loadpurge = mv88e6352_g1_vtu_loadpurge,
 	.serdes_get_lane = mv88e6352_serdes_get_lane,
+	.pcs_init = mv88e6352_pcs_init,
 	.serdes_pcs_get_state = mv88e6352_serdes_pcs_get_state,
 	.serdes_pcs_config = mv88e6352_serdes_pcs_config,
 	.serdes_pcs_an_restart = mv88e6352_serdes_pcs_an_restart,

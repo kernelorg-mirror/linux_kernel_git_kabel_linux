@@ -555,6 +555,8 @@ struct mv88e6xxx_ops {
 	/* SERDES lane mapping */
 	int (*serdes_get_lane)(struct mv88e6xxx_chip *chip, int port);
 
+	int (*pcs_init)(struct mv88e6xxx_chip *chip, int port);
+
 	int (*serdes_pcs_get_state)(struct mv88e6xxx_chip *chip, int port,
 				    int lane, struct phylink_link_state *state);
 	int (*serdes_pcs_config)(struct mv88e6xxx_chip *chip, int port,
