@@ -2023,6 +2023,8 @@ static void phylink_sfp_detach(void *upstream, struct sfp_bus *bus)
 	pl->netdev->sfp_bus = NULL;
 }
 
+static DECLARE_PHY_INTERFACE_MASK(phylink_sfp_interfaces);
+
 static const phy_interface_t phylink_sfp_interface_preference[] = {
 	PHY_INTERFACE_MODE_USXGMII,
 	PHY_INTERFACE_MODE_10GBASER,
@@ -2247,6 +2249,10 @@ static int phylink_sfp_connect_phy(void *upstream, struct phy_device *phy)
 		mode = MLO_AN_PHY;
 	else
 		mode = MLO_AN_INBAND;
+
+	/* Set the PHY's host supported interfaces */
+	phy_interface_and(phy->host_interfaces, phylink_sfp_interfaces,
+			  pl->config->supported_interfaces);
 
 	/* Do the initial configuration */
 	ret = phylink_sfp_config(pl, mode, phy->supported, phy->advertising);
@@ -2630,5 +2636,17 @@ void phylink_mii_c45_pcs_get_state(struct mdio_device *pcs,
 	}
 }
 EXPORT_SYMBOL_GPL(phylink_mii_c45_pcs_get_state);
+
+static int __init phylink_init(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(phylink_sfp_interface_preference); i++)
+		set_bit(phylink_sfp_interface_preference[i],
+			phylink_sfp_interfaces);
+
+	return 0;
+}
+module_init(phylink_init);
 
 MODULE_LICENSE("GPL v2");
