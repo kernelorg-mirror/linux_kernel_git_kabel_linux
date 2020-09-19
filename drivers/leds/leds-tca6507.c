@@ -654,6 +654,7 @@ static int tca6507_register_leds_and_gpios(struct device *dev,
 		return -EINVAL;
 
 	device_for_each_child_node(dev, child) {
+		struct led_init_data init_data = {};
 		struct tca6507_led *led;
 		u32 reg;
 
@@ -679,18 +680,14 @@ static int tca6507_register_leds_and_gpios(struct device *dev,
 		led = &tca->leds[reg];
 		led->chip = tca;
 		led->num = reg;
-
-		if (fwnode_property_read_string(child, "label",
-						&led->led_cdev.name))
-			led->led_cdev.name = fwnode_get_name(child);
-
-		fwnode_property_read_string(child, "linux,default-trigger",
-					    &led->led_cdev.default_trigger);
-
+		led->bank = -1;
 		led->led_cdev.brightness_set = tca6507_brightness_set;
 		led->led_cdev.blink_set = tca6507_blink_set;
-		led->bank = -1;
-		ret = devm_led_classdev_register(dev, &led->led_cdev);
+
+		init_data.fwnode = child;
+
+		ret = devm_led_classdev_register_ext(dev, &led->led_cdev,
+						     &init_data);
 		if (ret) {
 			dev_err(dev, "Failed to register LED for node %pfw\n",
 				child);
