@@ -278,12 +278,9 @@ static int cap11xx_init_leds(struct device *dev,
 		return error;
 
 	for_each_child_of_node(node, child) {
+		struct led_init_data init_data = {};
 		u32 reg;
 
-		led->cdev.name =
-			of_get_property(child, "label", NULL) ? : child->name;
-		led->cdev.default_trigger =
-			of_get_property(child, "linux,default-trigger", NULL);
 		led->cdev.flags = 0;
 		led->cdev.brightness_set_blocking = cap11xx_led_set;
 		led->cdev.max_brightness = 1;
@@ -298,7 +295,10 @@ static int cap11xx_init_leds(struct device *dev,
 		led->reg = reg;
 		led->priv = priv;
 
-		error = devm_led_classdev_register(dev, &led->cdev);
+		init_data.fwnode = of_fwnode_handle(child);
+
+		error = devm_led_classdev_register_ext(dev, &led->cdev,
+						       &init_data);
 		if (error) {
 			of_node_put(child);
 			return error;
