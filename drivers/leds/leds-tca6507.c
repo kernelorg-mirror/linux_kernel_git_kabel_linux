@@ -628,9 +628,7 @@ static int tca6507_register_gpios(struct device *dev,
 	tca->gpio.direction_output = tca6507_gpio_direction_output;
 	tca->gpio.set = tca6507_gpio_set_value;
 	tca->gpio.parent = dev;
-#ifdef CONFIG_OF_GPIO
-	tca->gpio.of_node = of_node_get(dev_of_node(dev));
-#endif
+
 	return devm_gpiochip_add_data(dev, &tca->gpio, tca);
 }
 #else /* CONFIG_GPIOLIB */
