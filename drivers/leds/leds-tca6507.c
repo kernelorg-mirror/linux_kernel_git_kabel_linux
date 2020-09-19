@@ -643,7 +643,7 @@ static int tca6507_register_gpios(struct device *dev,
 static int tca6507_register_leds_and_gpios(struct device *dev,
 					   struct tca6507_chip *tca)
 {
-	unsigned long gpio_bitmap = 0;
+	unsigned long gpio_bitmap = 0, led_bitmap = 0;
 	struct fwnode_handle *child;
 	int count, ret;
 
@@ -662,12 +662,18 @@ static int tca6507_register_leds_and_gpios(struct device *dev,
 			dev_err(dev, "Invalid 'reg' property for node %pfw\n",
 				child);
 			goto err;
+		} else if ((gpio_bitmap | led_bitmap) & BIT(reg)) {
+			dev_err(dev, "LED channel already used for node %pfw\n",
+				child);
+			goto err;
 		}
 
 		if (fwnode_property_match_string(child, "compatible",
 						 "gpio") >= 0) {
 			gpio_bitmap |= BIT(reg);
 			continue;
+		} else {
+			led_bitmap |= BIT(reg);
 		}
 
 		led = &tca->leds[reg];
