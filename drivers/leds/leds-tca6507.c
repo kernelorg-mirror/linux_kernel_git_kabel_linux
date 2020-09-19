@@ -732,13 +732,13 @@ static int tca6507_probe(struct i2c_client *client,
 	spin_lock_init(&tca->lock);
 	i2c_set_clientdata(client, tca);
 
+	/* set all registers to known state - zero */
+	tca->reg_set = 0x7f;
+	tca6507_work(&tca->work);
+
 	err = tca6507_register_leds_and_gpios(dev, tca);
 	if (err)
 		return err;
-
-	/* set all registers to known state - zero */
-	tca->reg_set = 0x7f;
-	schedule_work(&tca->work);
 
 	return 0;
 }
