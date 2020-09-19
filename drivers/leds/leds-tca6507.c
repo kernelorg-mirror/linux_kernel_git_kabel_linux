@@ -613,7 +613,7 @@ static int tca6507_register_gpios(struct device *dev,
 				  struct tca6507_chip *tca,
 				  unsigned long gpio_bitmap)
 {
-	int i, gpios, ret;
+	int i, gpios;
 
 	if (!gpio_bitmap)
 		return 0;
@@ -631,17 +631,7 @@ static int tca6507_register_gpios(struct device *dev,
 #ifdef CONFIG_OF_GPIO
 	tca->gpio.of_node = of_node_get(dev_of_node(dev));
 #endif
-	ret = gpiochip_add_data(&tca->gpio, tca);
-	if (ret)
-		tca->gpio.ngpio = 0;
-
-	return ret;
-}
-
-static void tca6507_remove_gpio(struct tca6507_chip *tca)
-{
-	if (tca->gpio.ngpio)
-		gpiochip_remove(&tca->gpio);
+	return devm_gpiochip_add_data(dev, &tca->gpio, tca);
 }
 #else /* CONFIG_GPIOLIB */
 static int tca6507_register_gpios(struct device *dev,
@@ -649,9 +639,6 @@ static int tca6507_register_gpios(struct device *dev,
 				  unsigned long gpio_bitmap)
 {
 	return 0;
-}
-static void tca6507_remove_gpio(struct tca6507_chip *tca)
-{
 }
 #endif /* CONFIG_GPIOLIB */
 
@@ -699,7 +686,7 @@ static int tca6507_register_leds_and_gpios(struct device *dev,
 		led->led_cdev.brightness_set = tca6507_brightness_set;
 		led->led_cdev.blink_set = tca6507_blink_set;
 		led->bank = -1;
-		ret = led_classdev_register(dev, &led->led_cdev);
+		ret = devm_led_classdev_register(dev, &led->led_cdev);
 		if (ret) {
 			dev_err(dev, "Failed to register LED for node %pfw\n",
 				child);
@@ -725,7 +712,7 @@ static int tca6507_probe(struct i2c_client *client,
 	struct device *dev = &client->dev;
 	struct i2c_adapter *adapter;
 	struct tca6507_chip *tca;
-	int err, i;
+	int err;
 
 	adapter = client->adapter;
 
@@ -743,32 +730,19 @@ static int tca6507_probe(struct i2c_client *client,
 
 	err = tca6507_register_leds_and_gpios(dev, tca);
 	if (err)
-		goto exit;
+		return err;
 
 	/* set all registers to known state - zero */
 	tca->reg_set = 0x7f;
 	schedule_work(&tca->work);
 
 	return 0;
-exit:
-	for (i = 0; i < NUM_LEDS; ++i)
-		if (tca->leds[i].led_cdev.name)
-			led_classdev_unregister(&tca->leds[i].led_cdev);
-
-	return err;
 }
 
 static int tca6507_remove(struct i2c_client *client)
 {
-	int i;
 	struct tca6507_chip *tca = i2c_get_clientdata(client);
-	struct tca6507_led *tca_leds = tca->leds;
 
-	for (i = 0; i < NUM_LEDS; i++) {
-		if (tca_leds[i].led_cdev.name)
-			led_classdev_unregister(&tca_leds[i].led_cdev);
-	}
-	tca6507_remove_gpio(tca);
 	cancel_work_sync(&tca->work);
 
 	return 0;
