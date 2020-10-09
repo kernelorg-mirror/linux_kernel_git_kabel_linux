@@ -210,7 +210,8 @@ static u32 armada_37xx_avs_val_match(int target_vm)
  * on L0 voltage and fill all AVS values to the AVS value table.
  */
 static void __init armada37xx_cpufreq_avs_configure(struct regmap *base,
-						struct armada_37xx_dvfs *dvfs)
+						struct armada_37xx_dvfs *dvfs,
+						unsigned int cur_frequency)
 {
 	unsigned int target_vm;
 	int load_level = 0;
@@ -258,6 +259,14 @@ static void __init armada37xx_cpufreq_avs_configure(struct regmap *base,
 	target_vm = avs_map[l0_vdd_min] - 150;
 	target_vm = target_vm > MIN_VOLT_MV ? target_vm : MIN_VOLT_MV;
 	dvfs->avs[2] = dvfs->avs[3] = armada_37xx_avs_val_match(target_vm);
+
+	/*
+	 * WIP: To make cpufreq stable on systems with 1 GHz base frequency,
+	 * we setup AVS voltage for load levels L1, L2 and L3 to 1108 mV.
+	 */
+	if (cur_frequency == 1000*1000*1000)
+		dvfs->avs[1] = dvfs->avs[2] = dvfs->avs[3] =
+			armada_37xx_avs_val_match(1108);
 }
 
 static void __init armada37xx_cpufreq_avs_setup(struct regmap *base,
@@ -447,7 +456,7 @@ static int __init armada37xx_cpufreq_driver_init(void)
 
 	armada37xx_cpufreq_state->regmap = nb_pm_base;
 
-	armada37xx_cpufreq_avs_configure(avs_base, dvfs);
+	armada37xx_cpufreq_avs_configure(avs_base, dvfs, cur_frequency);
 	armada37xx_cpufreq_avs_setup(avs_base, dvfs);
 
 	armada37xx_cpufreq_dvfs_setup(nb_pm_base, nb_clk_base, dvfs->divider);
