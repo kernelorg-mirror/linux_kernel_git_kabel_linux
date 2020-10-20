@@ -683,6 +683,63 @@ static void mv88e6xxx_validate(struct dsa_switch *ds, int port,
 	phylink_helper_basex_speed(state);
 }
 
+static void mv88e6352_phylink_get_interfaces(struct mv88e6xxx_chip *chip,
+					     int port,
+					     unsigned long *supported)
+{
+	if (mv88e6xxx_serdes_get_lane(chip, port)) {
+		/* FIXME: does code for 6352 family support changing between
+		 * SGMII and 1000base-x?
+		 */
+		__set_bit(PHY_INTERFACE_MODE_SGMII, supported);
+		__set_bit(PHY_INTERFACE_MODE_1000BASEX, supported);
+	}
+}
+
+static void mv88e6341_phylink_get_interfaces(struct mv88e6xxx_chip *chip,
+					     int port,
+					     unsigned long *supported)
+{
+	if (port == 5) {
+		__set_bit(PHY_INTERFACE_MODE_SGMII, supported);
+		__set_bit(PHY_INTERFACE_MODE_1000BASEX, supported);
+		__set_bit(PHY_INTERFACE_MODE_2500BASEX, supported);
+	}
+}
+
+static void mv88e6390_phylink_get_interfaces(struct mv88e6xxx_chip *chip,
+					     int port,
+					     unsigned long *supported)
+{
+	if (port == 9 || port == 10) {
+		__set_bit(PHY_INTERFACE_MODE_SGMII, supported);
+		__set_bit(PHY_INTERFACE_MODE_1000BASEX, supported);
+		__set_bit(PHY_INTERFACE_MODE_2500BASEX, supported);
+	}
+}
+
+static void mv88e6393x_phylink_get_interfaces(struct mv88e6xxx_chip *chip,
+					      int port,
+					      unsigned long *supported)
+{
+	if (port == 0 || port == 9 || port == 10) {
+		__set_bit(PHY_INTERFACE_MODE_SGMII, supported);
+		__set_bit(PHY_INTERFACE_MODE_1000BASEX, supported);
+		__set_bit(PHY_INTERFACE_MODE_2500BASEX, supported);
+		__set_bit(PHY_INTERFACE_MODE_5GBASER, supported);
+		__set_bit(PHY_INTERFACE_MODE_10GBASER, supported);
+	}
+}
+
+static void mv88e6xxx_get_interfaces(struct dsa_switch *ds, int port,
+				     unsigned long *supported)
+{
+	struct mv88e6xxx_chip *chip = ds->priv;
+
+	if (chip->info->ops->phylink_get_interfaces)
+		chip->info->ops->phylink_get_interfaces(chip, port, supported);
+}
+
 static void mv88e6xxx_mac_config(struct dsa_switch *ds, int port,
 				 unsigned int mode,
 				 const struct phylink_link_state *state)
@@ -3622,6 +3679,7 @@ static const struct mv88e6xxx_ops mv88e6141_ops = {
 	.serdes_irq_enable = mv88e6390_serdes_irq_enable,
 	.serdes_irq_status = mv88e6390_serdes_irq_status,
 	.gpio_ops = &mv88e6352_gpio_ops,
+	.phylink_get_interfaces = mv88e6341_phylink_get_interfaces,
 	.phylink_validate = mv88e6341_phylink_validate,
 };
 
@@ -3797,6 +3855,7 @@ static const struct mv88e6xxx_ops mv88e6172_ops = {
 	.serdes_get_regs_len = mv88e6352_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6352_serdes_get_regs,
 	.gpio_ops = &mv88e6352_gpio_ops,
+	.phylink_get_interfaces = mv88e6352_phylink_get_interfaces,
 	.phylink_validate = mv88e6352_phylink_validate,
 };
 
@@ -3897,6 +3956,7 @@ static const struct mv88e6xxx_ops mv88e6176_ops = {
 	.serdes_get_regs_len = mv88e6352_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6352_serdes_get_regs,
 	.gpio_ops = &mv88e6352_gpio_ops,
+	.phylink_get_interfaces = mv88e6352_phylink_get_interfaces,
 	.phylink_validate = mv88e6352_phylink_validate,
 };
 
@@ -3998,6 +4058,7 @@ static const struct mv88e6xxx_ops mv88e6190_ops = {
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
 	.gpio_ops = &mv88e6352_gpio_ops,
+	.phylink_get_interfaces = mv88e6390_phylink_get_interfaces,
 	.phylink_validate = mv88e6390_phylink_validate,
 };
 
@@ -4059,6 +4120,7 @@ static const struct mv88e6xxx_ops mv88e6190x_ops = {
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
 	.gpio_ops = &mv88e6352_gpio_ops,
+	.phylink_get_interfaces = mv88e6390_phylink_get_interfaces,
 	.phylink_validate = mv88e6390x_phylink_validate,
 };
 
@@ -4119,6 +4181,7 @@ static const struct mv88e6xxx_ops mv88e6191_ops = {
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
+	.phylink_get_interfaces = mv88e6390_phylink_get_interfaces,
 	.phylink_validate = mv88e6390_phylink_validate,
 };
 
@@ -4179,6 +4242,7 @@ static const struct mv88e6xxx_ops mv88e6240_ops = {
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6352_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
+	.phylink_get_interfaces = mv88e6352_phylink_get_interfaces,
 	.phylink_validate = mv88e6352_phylink_validate,
 };
 
@@ -4281,6 +4345,7 @@ static const struct mv88e6xxx_ops mv88e6290_ops = {
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
+	.phylink_get_interfaces = mv88e6390_phylink_get_interfaces,
 	.phylink_validate = mv88e6390_phylink_validate,
 };
 
@@ -4424,6 +4489,7 @@ static const struct mv88e6xxx_ops mv88e6341_ops = {
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
+	.phylink_get_interfaces = mv88e6341_phylink_get_interfaces,
 	.phylink_validate = mv88e6341_phylink_validate,
 };
 
@@ -4573,6 +4639,7 @@ static const struct mv88e6xxx_ops mv88e6352_ops = {
 	.serdes_get_stats = mv88e6352_serdes_get_stats,
 	.serdes_get_regs_len = mv88e6352_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6352_serdes_get_regs,
+	.phylink_get_interfaces = mv88e6352_phylink_get_interfaces,
 	.phylink_validate = mv88e6352_phylink_validate,
 };
 
@@ -4638,6 +4705,7 @@ static const struct mv88e6xxx_ops mv88e6390_ops = {
 	.serdes_get_stats = mv88e6390_serdes_get_stats,
 	.serdes_get_regs_len = mv88e6390_serdes_get_regs_len,
 	.serdes_get_regs = mv88e6390_serdes_get_regs,
+	.phylink_get_interfaces = mv88e6390_phylink_get_interfaces,
 	.phylink_validate = mv88e6390_phylink_validate,
 };
 
@@ -4702,6 +4770,7 @@ static const struct mv88e6xxx_ops mv88e6390x_ops = {
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
+	.phylink_get_interfaces = mv88e6390_phylink_get_interfaces,
 	.phylink_validate = mv88e6390x_phylink_validate,
 };
 
@@ -4766,6 +4835,7 @@ static const struct mv88e6xxx_ops mv88e6393x_ops = {
 	.gpio_ops = &mv88e6352_gpio_ops,
 	.avb_ops = &mv88e6390_avb_ops,
 	.ptp_ops = &mv88e6352_ptp_ops,
+	.phylink_get_interfaces = mv88e6393x_phylink_get_interfaces,
 	.phylink_validate = mv88e6393x_phylink_validate,
 };
 
@@ -6031,6 +6101,7 @@ static const struct dsa_switch_ops mv88e6xxx_switch_ops = {
 	.get_tag_protocol	= mv88e6xxx_get_tag_protocol,
 	.setup			= mv88e6xxx_setup,
 	.teardown		= mv88e6xxx_teardown,
+	.phylink_get_interfaces	= mv88e6xxx_get_interfaces,
 	.phylink_validate	= mv88e6xxx_validate,
 	.phylink_mac_link_state	= mv88e6xxx_serdes_pcs_get_state,
 	.phylink_mac_config	= mv88e6xxx_mac_config,
