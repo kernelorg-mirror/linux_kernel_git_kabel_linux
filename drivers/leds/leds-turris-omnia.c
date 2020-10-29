@@ -7,9 +7,11 @@
 
 #include <linux/i2c.h>
 #include <linux/led-class-multicolor.h>
+#include <linux/ledtrig.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
+#include <linux/of_mdio.h>
 #include "leds.h"
 
 #define OMNIA_BOARD_LEDS		12
@@ -39,6 +41,9 @@ struct omnia_led {
 	struct led_classdev_mc mc_cdev;
 	struct mc_subled subled_info[OMNIA_LED_NUM_CHANNELS];
 	int reg;
+	struct work_struct work;
+	void *data;
+	int offload;
 };
 
 #define to_omnia_led(l)			container_of(l, struct omnia_led, mc_cdev)
@@ -81,6 +86,68 @@ static int omnia_led_brightness_set_blocking(struct led_classdev *cdev,
 	return ret;
 }
 
+static void omnia_do_offload(struct work_struct *ws)
+{
+	struct omnia_led *led = container_of(ws, struct omnia_led, work);
+	struct device *dev = led->mc_cdev.led_cdev.dev;
+	struct omnia_leds *leds = dev_get_drvdata(dev->parent);
+	struct i2c_client *client = leds->client;
+	struct phy_device *phydev = led->data;
+
+	if (led->offload >= 0) {
+		phy_modify_paged(phydev, 3, 16, 0xf, led->offload);
+		i2c_smbus_write_byte_data(client, CMD_LED_MODE,
+					  CMD_LED_MODE_LED(led->reg));
+	} else {
+		phy_modify_paged(phydev, 3, 16, 0xf, 8);
+		i2c_smbus_write_byte_data(client, CMD_LED_MODE,
+					  CMD_LED_MODE_LED(led->reg) |
+					  CMD_LED_MODE_USER);
+	}
+
+	dev_info(dev, "WAN PHY LED mode 0x%x\n", phy_read_paged(phydev, 3, 16) & 0xf);
+}
+
+static int omnia_led_trigger_offload(struct led_classdev *cdev, bool enable)
+{
+	struct led_classdev_mc *mc_cdev = lcdev_to_mccdev(cdev);
+	struct omnia_led *led = to_omnia_led(mc_cdev);
+	struct led_netdev_data *t;
+	struct phy_device *phydev;
+	struct device_node *np;
+
+	led->offload = -1;
+
+	t = cdev->trigger_data;
+
+	if (led->reg != 5 || cdev->trigger != &netdev_led_trigger || !t || !t->net_dev)
+		goto end;
+
+	np = of_find_node_by_path("/soc/internal-regs/mdio@72004/phy@1");
+	if (!np)
+		goto end;
+
+	phydev = of_phy_find_device(np);
+	if (!phydev)
+		goto end;
+
+	if (t->net_dev->phydev != phydev)
+		goto end;
+
+	if (t->link && t->tx && t->rx)
+		led->offload = 1;
+	else if (t->link && !t->tx && !t->rx)
+		led->offload = 0;
+	else if (!t->link && t->tx && t->rx)
+		led->offload = 4;
+
+	led->data = phydev;
+end:
+	schedule_work(&led->work);
+
+	return led->offload >= 0 ? 0 : -EOPNOTSUPP;
+}
+
 static int omnia_led_register(struct i2c_client *client, struct omnia_led *led,
 			      struct device_node *np)
 {
@@ -114,12 +181,14 @@ static int omnia_led_register(struct i2c_client *client, struct omnia_led *led,
 
 	led->mc_cdev.subled_info = led->subled_info;
 	led->mc_cdev.num_colors = OMNIA_LED_NUM_CHANNELS;
+	INIT_WORK(&led->work, omnia_do_offload);
 
 	init_data.fwnode = &np->fwnode;
 
 	cdev = &led->mc_cdev.led_cdev;
 	cdev->max_brightness = 255;
 	cdev->brightness_set_blocking = omnia_led_brightness_set_blocking;
+	cdev->trigger_offload = omnia_led_trigger_offload;
 
 	/* put the LED into software mode */
 	ret = i2c_smbus_write_byte_data(client, CMD_LED_MODE,
