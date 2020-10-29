@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * LED trigger shared structures
+ */
+
+#ifndef __LINUX_LEDTRIG_H__
+#define __LINUX_LEDTRIG_H__
+
+#include <linux/atomic.h>
+#include <linux/leds.h>
+#include <linux/netdevice.h>
+#include <linux/spinlock.h>
+
+#if IS_ENABLED(CONFIG_LEDS_TRIGGER_NETDEV)
+
+struct led_netdev_data {
+	spinlock_t lock;
+
+	struct delayed_work work;
+	struct notifier_block notifier;
+
+	struct led_classdev *led_cdev;
+	struct net_device *net_dev;
+
+	char device_name[IFNAMSIZ];
+	atomic_t interval;
+	unsigned int last_activity;
+
+	unsigned link:1;
+	unsigned tx:1;
+	unsigned rx:1;
+
+	unsigned linkup:1;
+};
+
+extern struct led_trigger netdev_led_trigger;
+
+#endif /* IS_ENABLED(CONFIG_LEDS_TRIGGER_NETDEV) */
+
+#endif /* __LINUX_LEDTRIG_H__ */

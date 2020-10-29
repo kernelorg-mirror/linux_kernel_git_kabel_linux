@@ -10,17 +10,16 @@
 //  Copyright 2005-2006 Openedhand Ltd.
 //  Author: Richard Purdie <rpurdie@openedhand.com>
 
-#include <linux/atomic.h>
 #include <linux/ctype.h>
 #include <linux/device.h>
 #include <linux/init.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/leds.h>
+#include <linux/ledtrig.h>
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
-#include <linux/spinlock.h>
 #include <linux/timer.h>
 #include "../leds.h"
 
@@ -35,26 +34,6 @@
  * rx -  LED blinks on receive data
  *
  */
-
-struct led_netdev_data {
-	spinlock_t lock;
-
-	struct delayed_work work;
-	struct notifier_block notifier;
-
-	struct led_classdev *led_cdev;
-	struct net_device *net_dev;
-
-	char device_name[IFNAMSIZ];
-	atomic_t interval;
-	unsigned int last_activity;
-
-	unsigned link:1;
-	unsigned tx:1;
-	unsigned rx:1;
-
-	unsigned linkup:1;
-};
 
 enum netdev_led_attr {
 	NETDEV_ATTR_LINK,
@@ -72,6 +51,9 @@ static void set_baseline_state(struct led_netdev_data *trigger_data)
 		led_cdev->blink_brightness = current_brightness;
 	if (!led_cdev->blink_brightness)
 		led_cdev->blink_brightness = led_cdev->max_brightness;
+
+	if (!led_trigger_offload(led_cdev))
+		return;
 
 	if (!trigger_data->linkup)
 		led_set_brightness(led_cdev, LED_OFF);
@@ -295,6 +277,7 @@ static int netdev_trig_notify(struct notifier_block *nb,
 		netdev_notifier_info_to_dev((struct netdev_notifier_info *)dv);
 	struct led_netdev_data *trigger_data =
 		container_of(nb, struct led_netdev_data, notifier);
+	bool reset = true;
 
 	if (evt != NETDEV_UP && evt != NETDEV_DOWN && evt != NETDEV_CHANGE
 	    && evt != NETDEV_REGISTER && evt != NETDEV_UNREGISTER
@@ -327,10 +310,12 @@ static int netdev_trig_notify(struct notifier_block *nb,
 	case NETDEV_CHANGE:
 		if (netif_carrier_ok(dev))
 			trigger_data->linkup = 1;
+		reset = !trigger_data->led_cdev->offloaded;
 		break;
 	}
 
-	set_baseline_state(trigger_data);
+	if (reset)
+		set_baseline_state(trigger_data);
 
 	spin_unlock_bh(&trigger_data->lock);
 
@@ -423,12 +408,13 @@ static void netdev_trig_deactivate(struct led_classdev *led_cdev)
 	kfree(trigger_data);
 }
 
-static struct led_trigger netdev_led_trigger = {
+struct led_trigger netdev_led_trigger = {
 	.name = "netdev",
 	.activate = netdev_trig_activate,
 	.deactivate = netdev_trig_deactivate,
 	.groups = netdev_trig_groups,
 };
+EXPORT_SYMBOL_GPL(netdev_led_trigger);
 
 static int __init netdev_trig_init(void)
 {
