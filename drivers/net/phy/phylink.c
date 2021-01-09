@@ -1151,7 +1151,7 @@ static int phylink_attach_phy(struct phylink *pl, struct phy_device *phy,
 {
 	if (WARN_ON(pl->cfg_link_an_mode == MLO_AN_FIXED ||
 		    (pl->cfg_link_an_mode == MLO_AN_INBAND &&
-		     phy_interface_mode_is_8023z(interface))))
+		     phy_interface_mode_is_8023z(interface) && !pl->sfp_bus)))
 		return -EINVAL;
 
 	if (pl->phydev)
@@ -2342,9 +2342,6 @@ static int phylink_sfp_config(struct phylink *pl, u8 mode,
 	phylink_dbg(pl, "requesting link mode %s/%s with support %*pb\n",
 		    phylink_an_mode_str(mode), phy_modes(config.interface),
 		    __ETHTOOL_LINK_MODE_MASK_NBITS, support);
-
-	if (phy_interface_mode_is_8023z(iface) && pl->phydev)
-		return -EINVAL;
 
 	changed = !linkmode_equal(pl->supported, support) ||
 		  !linkmode_equal(pl->link_config.advertising,
