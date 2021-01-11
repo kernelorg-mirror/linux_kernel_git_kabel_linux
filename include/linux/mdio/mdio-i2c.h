@@ -11,6 +11,12 @@ struct device;
 struct i2c_adapter;
 struct mii_bus;
 
-struct mii_bus *mdio_i2c_alloc(struct device *parent, struct i2c_adapter *i2c);
+enum mdio_i2c_proto {
+	MDIO_I2C_DEFAULT,
+	MDIO_I2C_ROLLBALL,
+};
+
+struct mii_bus *mdio_i2c_alloc(struct device *parent, struct i2c_adapter *i2c,
+			       enum mdio_i2c_proto protocol);
 
 #endif
