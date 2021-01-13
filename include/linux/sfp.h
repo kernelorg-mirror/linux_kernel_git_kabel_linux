@@ -490,6 +490,7 @@ enum {
 
 	SFP_EXT_STATUS			= 0x76,
 	SFP_VSL				= 0x78,
+	SFP_PASSWORD			= 0x7b,
 	SFP_PAGE			= 0x7f,
 };
 
