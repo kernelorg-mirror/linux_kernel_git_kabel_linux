@@ -136,6 +136,23 @@ properties:
       used. The absence of this property indicates the muxers
       should be configured so that the external PHY is used.
 
+  supported-mac-connection-types:
+    $ref: "ethernet-controller.yaml#/$defs/phy-connection-type-array"
+    description:
+      The PHY device may support different interface types for
+      connecting the Ethernet MAC device to the PHY device (i.e.
+      rgmii, sgmii, xaui, ...), but not all of these interface
+      types must necessarily be supported for a specific board
+      (not all of them are wired, or there may be some known bug
+      for a specific mode, ...).
+      This property specifies a list of interface modes to the
+      MAC supported by the PHY hardware that are also supported
+      by the board.
+      If this property is missing, all modes supported by the
+      PHY are presumend to be supported by the board.
+    minItems: 1
+    maxItems: 64
+
   resets:
     maxItems: 1
 
@@ -196,5 +213,6 @@ examples:
             reset-gpios = <&gpio1 4 1>;
             reset-assert-us = <1000>;
             reset-deassert-us = <2000>;
+            supported-mac-connection-types = "xaui", "rxaui";
         };
     };
