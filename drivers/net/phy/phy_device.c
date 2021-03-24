@@ -2746,6 +2746,71 @@ static int phy_get_int_delay_property(struct device *dev, const char *name)
 }
 #endif
 
+static int phy_read_interfaces_property(struct phy_device *phydev,
+					const char *property,
+					unsigned long *interfaces)
+{
+	struct device *dev = &phydev->mdio.dev;
+	const char *modes[PHY_INTERFACE_MODE_MAX];
+	int i, j;
+	int ret;
+
+	phy_interface_zero(interfaces);
+
+	if (!device_property_present(dev, property))
+		return -ENOENT;
+
+	ret = device_property_read_string_array(dev, property, modes,
+						PHY_INTERFACE_MODE_MAX);
+	if (ret < 0) {
+		dev_warn(dev, "cannot read property %s: %d\n", property, ret);
+		return ret;
+	}
+
+	for (i = 0; i < ret; ++i) {
+		for (j = 0; j < PHY_INTERFACE_MODE_MAX; j++)
+			if (!strcasecmp(modes[i], phy_modes(j)))
+				break;
+
+		if (j == PHY_INTERFACE_MODE_MAX) {
+			dev_warn(dev, "unknown PHY mode %s in property %s\n",
+				 modes[i], property);
+			continue;
+		}
+
+		__set_bit(j, interfaces);
+	}
+
+	return 0;
+}
+
+/*
+ * phy_mask_unsupported_interfaces - mask unsupported interface modes
+ * @phydev:
+ *
+ * Description: if the PHY device has a 'supported-mac-connection-types'
+ * property, this function will disable PHY modes not mentioned here from the
+ * PHY device's supported_interfaces member.
+ */
+int phy_mask_unsupported_interfaces(struct phy_device *phydev)
+{
+	DECLARE_PHY_INTERFACE_MASK(supported_interfaces);
+	int ret;
+
+	ret = phy_read_interfaces_property(phydev,
+					   "supported-mac-connection-types",
+					   supported_interfaces);
+	if (ret == -ENOENT)
+		return 0;
+	else if (ret < 0)
+		return ret;
+
+	phy_interface_and(phydev->supported_interfaces,
+			  phydev->supported_interfaces, supported_interfaces);
+
+	return 0;
+}
+
 /**
  * phy_get_internal_delay - returns the index of the internal delay
  * @phydev: phy_device struct
