@@ -598,27 +598,74 @@ static int mv2110_init_interface(struct phy_device *phydev)
 	return 0;
 }
 
+static int mv3310_select_mactype(struct phy_device *phydev,
+				 unsigned long *host_interfaces)
+{
+	int mactype = -1;
+
+	if (test_bit(PHY_INTERFACE_MODE_USXGMII, host_interfaces))
+		mactype = MV_V2_33X0_PORT_CTRL_MACTYPE_USXGMII;
+	else if (test_bit(PHY_INTERFACE_MODE_SGMII, host_interfaces) &&
+		 test_bit(PHY_INTERFACE_MODE_10GBASER, host_interfaces))
+		mactype = MV_V2_33X0_PORT_CTRL_MACTYPE_10GBASER;
+	else if (test_bit(PHY_INTERFACE_MODE_SGMII, host_interfaces) &&
+		 test_bit(PHY_INTERFACE_MODE_RXAUI, host_interfaces))
+		mactype = MV_V2_33X0_PORT_CTRL_MACTYPE_RXAUI;
+	else if (test_bit(PHY_INTERFACE_MODE_SGMII, host_interfaces) &&
+		 test_bit(PHY_INTERFACE_MODE_XAUI, host_interfaces))
+		mactype = MV_V2_3310_PORT_CTRL_MACTYPE_XAUI;
+	else if (test_bit(PHY_INTERFACE_MODE_10GBASER, host_interfaces))
+		mactype = MV_V2_33X0_PORT_CTRL_MACTYPE_10GBASER_RATE_MATCH;
+	else if (test_bit(PHY_INTERFACE_MODE_RXAUI, host_interfaces))
+		mactype = MV_V2_33X0_PORT_CTRL_MACTYPE_RXAUI_RATE_MATCH;
+	else if (test_bit(PHY_INTERFACE_MODE_XAUI, host_interfaces))
+		mactype = MV_V2_3310_PORT_CTRL_MACTYPE_XAUI_RATE_MATCH;
+	else if (test_bit(PHY_INTERFACE_MODE_SGMII, host_interfaces))
+		mactype = MV_V2_33X0_PORT_CTRL_MACTYPE_10GBASER;
+
+	return mactype;
+}
+
 static int mv3310_init_interface(struct phy_device *phydev)
 {
 	struct mv3310_priv *priv = dev_get_drvdata(&phydev->mdio.dev);
-	int mactype;
+	int mactype = -1;
+	int ret;
 
 	/* Check that the PHY interface type is compatible */
-	if (phydev->interface != PHY_INTERFACE_MODE_SGMII &&
-	    phydev->interface != PHY_INTERFACE_MODE_2500BASEX &&
-	    phydev->interface != PHY_INTERFACE_MODE_5GBASER &&
-	    (phydev->interface != PHY_INTERFACE_MODE_XAUI ||
-	     priv->model == MV_MODEL_88X3340) &&
-	    phydev->interface != PHY_INTERFACE_MODE_RXAUI &&
-	    phydev->interface != PHY_INTERFACE_MODE_10GBASER &&
-	    phydev->interface != PHY_INTERFACE_MODE_USXGMII)
+	if (!phy_interface_empty(phydev->host_interfaces)) {
+		mactype = mv3310_select_mactype(phydev,
+						phydev->host_interfaces);
+	} else if (phydev->interface != PHY_INTERFACE_MODE_SGMII &&
+		   phydev->interface != PHY_INTERFACE_MODE_2500BASEX &&
+		   phydev->interface != PHY_INTERFACE_MODE_5GBASER &&
+		   (phydev->interface != PHY_INTERFACE_MODE_XAUI ||
+		    priv->model == MV_MODEL_88X3340) &&
+		   phydev->interface != PHY_INTERFACE_MODE_RXAUI &&
+		   phydev->interface != PHY_INTERFACE_MODE_10GBASER &&
+		   phydev->interface != PHY_INTERFACE_MODE_USXGMII) {
 		return -ENODEV;
+	}
 
-	mactype = phy_read_mmd(phydev, MDIO_MMD_VEND2, MV_V2_PORT_CTRL);
-	if (mactype < 0)
-		return mactype;
+	if (mactype != -1) {
+		ret = phy_modify_mmd_changed(phydev, MDIO_MMD_VEND2,
+					     MV_V2_PORT_CTRL,
+					     MV_V2_33X0_PORT_CTRL_MACTYPE_MASK,
+					     mactype);
+		if (ret > 0)
+			ret = phy_modify_mmd(phydev, MDIO_MMD_VEND2,
+					     MV_V2_PORT_CTRL,
+					     MV_V2_33X0_PORT_CTRL_SWRST,
+					     MV_V2_33X0_PORT_CTRL_SWRST);
+		if (ret < 0)
+			return ret;
+	} else {
+		mactype = phy_read_mmd(phydev, MDIO_MMD_VEND2, MV_V2_PORT_CTRL);
+		if (mactype < 0)
+			return mactype;
 
-	mactype &= MV_V2_33X0_PORT_CTRL_MACTYPE_MASK;
+		mactype &= MV_V2_33X0_PORT_CTRL_MACTYPE_MASK;
+	}
 
 	if (mactype == MV_V2_33X0_PORT_CTRL_MACTYPE_10GBASER_RATE_MATCH ||
 	    mactype == MV_V2_33X0_PORT_CTRL_MACTYPE_RXAUI_RATE_MATCH ||
