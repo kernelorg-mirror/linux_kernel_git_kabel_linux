@@ -408,6 +408,24 @@ static int mv3310_probe(struct phy_device *phydev)
 	    (phydev->c45_ids.devices_in_package & mmd_mask) != mmd_mask)
 		return -ENODEV;
 
+	__set_bit(PHY_INTERFACE_MODE_SGMII, phydev->supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_2500BASEX, phydev->supported_interfaces);
+	if (priv->has_5g)
+		__set_bit(PHY_INTERFACE_MODE_5GBASER,
+			  phydev->supported_interfaces);
+	if (priv->model == MV_MODEL_88X3310)
+		__set_bit(PHY_INTERFACE_MODE_XAUI,
+			  phydev->supported_interfaces);
+	if (priv->model == MV_MODEL_88X3310 || priv->model == MV_MODEL_88X3340)
+		__set_bit(PHY_INTERFACE_MODE_RXAUI,
+			  phydev->supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_10GBASER, phydev->supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_USXGMII, phydev->supported_interfaces);
+
+	ret = phy_mask_unsupported_interfaces(phydev);
+	if (ret < 0)
+		return ret;
+
 	ret = phy_read_mmd(phydev, MDIO_MMD_PMAPMD, MV_PMA_BOOT);
 	if (ret < 0)
 		return ret;
