@@ -1167,6 +1167,16 @@ static int ag71xx_phylink_setup(struct ag71xx *ag)
 
 	ag->phylink_config.dev = &ag->ndev->dev;
 	ag->phylink_config.type = PHYLINK_NETDEV;
+	__set_bit(PHY_INTERFACE_MODE_MII,
+		  ag->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_GMII,
+		  ag->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_SGMII,
+		  ag->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RMII,
+		  ag->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RGMII,
+		  ag->phylink_config.supported_interfaces);
 
 	phylink = phylink_create(&ag->phylink_config, ag->pdev->dev.fwnode,
 				 ag->phy_if_mode, &ag71xx_phylink_mac_ops);
