@@ -67,6 +67,7 @@ enum phylink_op_type {
  * @ovr_an_inband: if true, override PCS to MLO_AN_INBAND
  * @get_fixed_state: callback to execute to determine the fixed link state,
  *		     if MAC link is at %MLO_AN_FIXED mode.
+ * @supported_interfaces: bitmap of supported interface modes
  */
 struct phylink_config {
 	struct device *dev;
@@ -76,6 +77,7 @@ struct phylink_config {
 	bool ovr_an_inband;
 	void (*get_fixed_state)(struct phylink_config *config,
 				struct phylink_link_state *state);
+	DECLARE_PHY_INTERFACE_MASK(supported_interfaces);
 };
 
 /**
