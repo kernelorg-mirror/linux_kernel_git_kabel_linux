@@ -119,8 +119,6 @@ struct mv3310_chip {
 };
 
 struct mv3310_priv {
-	DECLARE_BITMAP(supported_interfaces, PHY_INTERFACE_MODE_MAX);
-
 	u32 firmware_ver;
 	bool rate_match;
 	phy_interface_t const_interface;
@@ -441,7 +439,7 @@ static int mv3310_probe(struct phy_device *phydev)
 	if (ret)
 		return ret;
 
-	chip->init_supported_interfaces(priv->supported_interfaces);
+	chip->init_supported_interfaces(phydev->supported_interfaces);
 
 	return phy_sfp_probe(phydev, &mv3310_sfp_ops);
 }
@@ -574,12 +572,11 @@ static int mv3340_init_interface(struct phy_device *phydev, int mactype)
 
 static int mv3310_config_init(struct phy_device *phydev)
 {
-	struct mv3310_priv *priv = dev_get_drvdata(&phydev->mdio.dev);
 	const struct mv3310_chip *chip = to_mv3310_chip(phydev);
 	int err, mactype;
 
 	/* Check that the PHY interface type is compatible */
-	if (!test_bit(phydev->interface, priv->supported_interfaces))
+	if (!test_bit(phydev->interface, phydev->supported_interfaces))
 		return -ENODEV;
 
 	phydev->mdix_ctrl = ETH_TP_MDI_AUTO;
