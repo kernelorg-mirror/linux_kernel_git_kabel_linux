@@ -792,6 +792,24 @@ qca8k_setup(struct dsa_switch *ds)
 }
 
 static void
+qca8k_phylink_get_interfaces(struct dsa_switch *ds, int port,
+			     unsigned long *supported)
+{
+	if (port == 0) {
+		__set_bit(PHY_INTERFACE_MODE_RGMII, supported);
+		__set_bit(PHY_INTERFACE_MODE_RGMII_ID, supported);
+		__set_bit(PHY_INTERFACE_MODE_SGMII, supported);
+	} else if (port == 6) {
+		__set_bit(PHY_INTERFACE_MODE_RGMII, supported);
+		__set_bit(PHY_INTERFACE_MODE_RGMII_ID, supported);
+		__set_bit(PHY_INTERFACE_MODE_SGMII, supported);
+		__set_bit(PHY_INTERFACE_MODE_1000BASEX, supported);
+	} else {
+		__set_bit(PHY_INTERFACE_MODE_GMII, supported);
+	}
+}
+
+static void
 qca8k_phylink_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
 			 const struct phylink_link_state *state)
 {
@@ -1383,6 +1401,7 @@ static const struct dsa_switch_ops qca8k_switch_ops = {
 	.port_vlan_filtering	= qca8k_port_vlan_filtering,
 	.port_vlan_add		= qca8k_port_vlan_add,
 	.port_vlan_del		= qca8k_port_vlan_del,
+	.phylink_get_interfaces	= qca8k_phylink_get_interfaces,
 	.phylink_validate	= qca8k_phylink_validate,
 	.phylink_mac_link_state	= qca8k_phylink_mac_link_state,
 	.phylink_mac_config	= qca8k_phylink_mac_config,
