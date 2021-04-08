@@ -833,6 +833,22 @@ static void felix_port_disable(struct dsa_switch *ds, int port)
 	return ocelot_port_disable(ocelot, port);
 }
 
+static void felix_phylink_get_interfaces(struct dsa_switch *ds, int port,
+					 unsigned long *supported)
+{
+	struct ocelot *ocelot = ds->priv;
+	struct felix *felix = ocelot_to_felix(ocelot);
+	int mode;
+
+	if (!felix->info->prevalidate_phy_mode)
+		return;
+
+	for (mode = PHY_INTERFACE_MODE_NA; mode < PHY_INTERFACE_MODE_MAX;
+	     ++mode)
+		if (!felix->info->prevalidate_phy_mode(ocelot, port, mode))
+			__set_bit(mode, supported);
+}
+
 static void felix_phylink_validate(struct dsa_switch *ds, int port,
 				   unsigned long *supported,
 				   struct phylink_link_state *state)
@@ -1628,6 +1644,7 @@ const struct dsa_switch_ops felix_switch_ops = {
 	.get_ethtool_stats		= felix_get_ethtool_stats,
 	.get_sset_count			= felix_get_sset_count,
 	.get_ts_info			= felix_get_ts_info,
+	.phylink_get_interfaces		= felix_phylink_get_interfaces,
 	.phylink_validate		= felix_phylink_validate,
 	.phylink_mac_config		= felix_phylink_mac_config,
 	.phylink_mac_link_down		= felix_phylink_mac_link_down,
