@@ -1051,6 +1051,10 @@ int phylink_connect_phy(struct phylink *pl, struct phy_device *phy)
 {
 	int ret;
 
+	/* Set the PHY's host supported interfaces */
+	phy_interface_and(phy->host_interfaces, phy->supported_interfaces,
+			  pl->config->supported_interfaces);
+
 	/* Use PHY device/driver interface */
 	if (pl->link_interface == PHY_INTERFACE_MODE_NA) {
 		pl->link_interface = phy->interface;
@@ -1069,6 +1073,51 @@ int phylink_connect_phy(struct phylink *pl, struct phy_device *phy)
 }
 EXPORT_SYMBOL_GPL(phylink_connect_phy);
 
+static int phylink_of_read_modes_property(struct device_node *dn,
+					  const char *property,
+					  unsigned long *interfaces)
+{
+	const char *modes[PHY_INTERFACE_MODE_MAX];
+	int i, j;
+	int ret;
+
+	phy_interface_zero(interfaces);
+
+	ret = of_property_read_string_array(dn, property, modes,
+					    PHY_INTERFACE_MODE_MAX);
+	if (ret < 0)
+		return ret;
+
+	for (i = 0; i < ret; ++i) {
+		for (j = 0; j < PHY_INTERFACE_MODE_MAX; j++)
+			if (!strcasecmp(modes[i], phy_modes(j)))
+				break;
+
+		if (j == PHY_INTERFACE_MODE_MAX) {
+			pr_warn("%pOF: unknown PHY mode %s in property %s\n",
+				dn, modes[i], property);
+			continue;
+		}
+
+		__set_bit(j, interfaces);
+	}
+
+	return 0;
+}
+
+static int phylink_of_phy_modes(struct device_node *dn,
+				unsigned long *interfaces)
+{
+	int ret;
+
+	ret = phylink_of_read_modes_property(dn, "phy-mode", interfaces);
+	if (ret < 0)
+		ret = phylink_of_read_modes_property(dn, "phy-connection-type",
+						     interfaces);
+
+	return ret;
+}
+
 /**
  * phylink_of_phy_connect() - connect the PHY specified in the DT mode.
  * @pl: a pointer to a &struct phylink returned from phylink_create()
@@ -1084,6 +1133,7 @@ EXPORT_SYMBOL_GPL(phylink_connect_phy);
 int phylink_of_phy_connect(struct phylink *pl, struct device_node *dn,
 			   u32 flags)
 {
+	DECLARE_PHY_INTERFACE_MASK(of_interfaces);
 	struct device_node *phy_node;
 	struct phy_device *phy_dev;
 	int ret;
@@ -1111,6 +1161,15 @@ int phylink_of_phy_connect(struct phylink *pl, struct device_node *dn,
 	of_node_put(phy_node);
 	if (!phy_dev)
 		return -ENODEV;
+
+	/* Set the PHY's host supported interfaces */
+	phy_interface_and(phy_dev->host_interfaces,
+			  phy_dev->supported_interfaces,
+			  pl->config->supported_interfaces);
+	if (!phylink_of_phy_modes(dn, of_interfaces))
+		phy_interface_and(phy_dev->host_interfaces,
+				  phy_dev->host_interfaces,
+				  of_interfaces);
 
 	ret = phy_attach_direct(pl->netdev, phy_dev, flags,
 				pl->link_interface);

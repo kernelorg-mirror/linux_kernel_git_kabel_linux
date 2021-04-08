@@ -540,6 +540,7 @@ struct macsec_ops;
  * @advertising: Currently advertised linkmodes
  * @adv_old: Saved advertised while power saving for WoL
  * @lp_advertising: Current link partner advertised linkmodes
+ * @host_interfaces: Interface modes supported by the host with this PHY
  * @supported_interfaces: Interface modes supported by the PHY
  * @eee_broken_modes: Energy efficient ethernet modes which should be prohibited
  * @autoneg: Flag autoneg being used
@@ -630,6 +631,7 @@ struct phy_device {
 	__ETHTOOL_DECLARE_LINK_MODE_MASK(adv_old);
 
 	/* supported PHY interface types */
+	DECLARE_PHY_INTERFACE_MASK(host_interfaces);
 	DECLARE_PHY_INTERFACE_MASK(supported_interfaces);
 
 	/* Energy efficient ethernet modes which should be prohibited */
