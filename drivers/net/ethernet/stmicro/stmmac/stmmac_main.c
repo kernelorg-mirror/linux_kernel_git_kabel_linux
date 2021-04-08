@@ -1201,6 +1201,28 @@ static int stmmac_phy_setup(struct stmmac_priv *priv)
 	priv->phylink_config.pcs_poll = true;
 	priv->phylink_config.ovr_an_inband =
 		priv->plat->mdio_bus_data->xpcs_an_inband;
+	__set_bit(PHY_INTERFACE_MODE_MII,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_GMII,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RMII,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RGMII,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RGMII_ID,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RGMII_RXID,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RGMII_TXID,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_REVMII,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_SGMII,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_USXGMII,
+		  priv->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_XLGMII,
+		  priv->phylink_config.supported_interfaces);
 
 	if (!fwnode)
 		fwnode = dev_fwnode(priv->device);
