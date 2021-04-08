@@ -325,6 +325,24 @@ int dpaa2_mac_connect(struct dpaa2_mac *mac)
 
 	mac->phylink_config.dev = &net_dev->dev;
 	mac->phylink_config.type = PHYLINK_NETDEV;
+	__set_bit(PHY_INTERFACE_MODE_RGMII,
+		  mac->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RGMII_ID,
+		  mac->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RGMII_RXID,
+		  mac->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RGMII_TXID,
+		  mac->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_SGMII,
+		  mac->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_1000BASEX,
+		  mac->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_QSGMII,
+		  mac->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_10GBASER,
+		  mac->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_USXGMII,
+		  mac->phylink_config.supported_interfaces);
 
 	phylink = phylink_create(&mac->phylink_config,
 				 of_fwnode_handle(dpmac_node), mac->if_mode,
