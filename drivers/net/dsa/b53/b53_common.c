@@ -1292,6 +1292,19 @@ void b53_port_event(struct dsa_switch *ds, int port)
 }
 EXPORT_SYMBOL(b53_port_event);
 
+static void b53_phylink_get_interfaces(struct dsa_switch *ds, int port,
+				       unsigned long *supported)
+{
+	__set_bit(PHY_INTERFACE_MODE_INTERNAL, supported);
+	__set_bit(PHY_INTERFACE_MODE_MII, supported);
+	__set_bit(PHY_INTERFACE_MODE_GMII, supported);
+	__set_bit(PHY_INTERFACE_MODE_RGMII, supported);
+	__set_bit(PHY_INTERFACE_MODE_RGMII_TXID, supported);
+	__set_bit(PHY_INTERFACE_MODE_REVMII, supported);
+	__set_bit(PHY_INTERFACE_MODE_SGMII, supported);
+	__set_bit(PHY_INTERFACE_MODE_1000BASEX, supported);
+}
+
 void b53_phylink_validate(struct dsa_switch *ds, int port,
 			  unsigned long *supported,
 			  struct phylink_link_state *state)
@@ -2231,6 +2244,7 @@ static const struct dsa_switch_ops b53_switch_ops = {
 	.phy_read		= b53_phy_read16,
 	.phy_write		= b53_phy_write16,
 	.adjust_link		= b53_adjust_link,
+	.phylink_get_interfaces	= b53_phylink_get_interfaces,
 	.phylink_validate	= b53_phylink_validate,
 	.phylink_mac_link_state	= b53_phylink_mac_link_state,
 	.phylink_mac_config	= b53_phylink_mac_config,
