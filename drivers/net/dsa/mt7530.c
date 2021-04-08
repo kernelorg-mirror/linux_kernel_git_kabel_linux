@@ -2634,6 +2634,22 @@ static void mt7531_mac_port_validate(struct dsa_switch *ds, int port,
 }
 
 static void
+mt753x_phylink_get_interfaces(struct dsa_switch *ds, int port,
+			      unsigned long *supported)
+{
+	struct phylink_link_state state;
+	int mode;
+
+	for (mode = PHY_INTERFACE_MODE_NA; mode < PHY_INTERFACE_MODE_MAX;
+	     ++mode) {
+		state.interface = mode;
+
+		if (mt753x_phy_mode_supported(ds, port, &state))
+			__set_bit(mode, supported);
+	}
+}
+
+static void
 mt753x_phylink_validate(struct dsa_switch *ds, int port,
 			unsigned long *supported,
 			struct phylink_link_state *state)
@@ -2829,6 +2845,7 @@ static const struct dsa_switch_ops mt7530_switch_ops = {
 	.port_vlan_del		= mt7530_port_vlan_del,
 	.port_mirror_add	= mt753x_port_mirror_add,
 	.port_mirror_del	= mt753x_port_mirror_del,
+	.phylink_get_interfaces	= mt753x_phylink_get_interfaces,
 	.phylink_validate	= mt753x_phylink_validate,
 	.phylink_mac_link_state	= mt753x_phylink_mac_link_state,
 	.phylink_mac_config	= mt753x_phylink_mac_config,
