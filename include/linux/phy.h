@@ -433,6 +433,11 @@ struct mii_bus {
 
 	/** @shared: shared state across different PHYs */
 	struct phy_package_shared *shared[PHY_MAX_ADDR];
+
+#if IS_ENABLED(CONFIG_MDIO_BUS_DEBUGFS)
+	/* address and regnum for debugfs */
+	u32 debug_addr, debug_reg;
+#endif
 };
 #define to_mii_bus(d) container_of(d, struct mii_bus, dev)
 

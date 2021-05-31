@@ -40,6 +40,7 @@
 #include <trace/events/mdio.h>
 
 #include "mdio-boardinfo.h"
+#include "mdio_debugfs.h"
 
 static int mdiobus_register_gpiod(struct mdio_device *mdiodev)
 {
@@ -736,6 +737,12 @@ int __mdiobus_register(struct mii_bus *bus, struct module *owner)
 			goto error;
 	}
 
+	err = mdiobus_register_debugfs(bus);
+	if (err) {
+		dev_err(&bus->dev, "mii_bus %s couldn't create debugfs entries\n", bus->id);
+		goto error;
+	}
+
 	mdiobus_setup_mdiodev_from_board_info(bus, mdiobus_create_device);
 
 	bus->state = MDIOBUS_REGISTERED;
@@ -769,6 +776,8 @@ void mdiobus_unregister(struct mii_bus *bus)
 	if (WARN_ON_ONCE(bus->state != MDIOBUS_REGISTERED))
 		return;
 	bus->state = MDIOBUS_UNREGISTERED;
+
+	mdiobus_unregister_debugfs(bus);
 
 	for (i = 0; i < PHY_MAX_ADDR; i++) {
 		mdiodev = bus->mdio_map[i];
@@ -1398,11 +1407,23 @@ int __init mdio_bus_init(void)
 	int ret;
 
 	ret = class_register(&mdio_bus_class);
-	if (!ret) {
-		ret = bus_register(&mdio_bus_type);
-		if (ret)
-			class_unregister(&mdio_bus_class);
-	}
+	if (ret)
+		return ret;
+
+	ret = bus_register(&mdio_bus_type);
+	if (ret)
+		goto err_class;
+
+	ret = mdiobus_debugfs_init();
+	if (ret)
+		goto err_bus;
+
+	return 0;
+
+err_bus:
+	bus_unregister(&mdio_bus_type);
+err_class:
+	class_unregister(&mdio_bus_class);
 
 	return ret;
 }
@@ -1410,6 +1431,7 @@ int __init mdio_bus_init(void)
 #if IS_ENABLED(CONFIG_PHYLIB)
 void mdio_bus_exit(void)
 {
+	mdiobus_debugfs_exit();
 	class_unregister(&mdio_bus_class);
 	bus_unregister(&mdio_bus_type);
 }
