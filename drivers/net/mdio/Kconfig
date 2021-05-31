@@ -43,6 +43,14 @@ config ACPI_MDIO
 
 if MDIO_BUS
 
+config MDIO_BUS_DEBUGFS
+	bool "MDIO bus debugfs support"
+	depends on DEBUG_FS
+	help
+	  This adds support to communicate via the MDIO bus via files in
+	  debugfs. Note that using this on a PHY device that is being handled by
+	  a driver can break the state of the PHY.
+
 config MDIO_DEVRES
 	tristate
 
