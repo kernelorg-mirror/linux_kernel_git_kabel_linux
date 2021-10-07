@@ -197,6 +197,8 @@ static int phylink_validate_any(struct phylink *pl, unsigned long *supported,
 static int phylink_validate(struct phylink *pl, unsigned long *supported,
 			    struct phylink_link_state *state)
 {
+	struct phylink_pcs *pcs;
+
 	if (!phy_interface_empty(pl->config->supported_interfaces)) {
 		if (state->interface == PHY_INTERFACE_MODE_NA)
 			return phylink_validate_any(pl, supported, state);
@@ -207,6 +209,12 @@ static int phylink_validate(struct phylink *pl, unsigned long *supported,
 	}
 
 	pl->mac_ops->validate(pl->config, supported, state);
+
+	if (pl->mac_ops->mac_select_pcs) {
+		pcs = pl->mac_ops->mac_select_pcs(pl->config, state->interface);
+		if (!pcs)
+			return -EINVAL;
+	}
 
 	return phylink_is_empty_linkmode(supported) ? -EINVAL : 0;
 }
@@ -559,6 +567,7 @@ static void phylink_mac_pcs_an_restart(struct phylink *pl)
 static void phylink_major_config(struct phylink *pl, bool restart,
 				  const struct phylink_link_state *state)
 {
+	struct phylink_pcs *pcs;
 	int err;
 
 	phylink_dbg(pl, "major config %s\n", phy_modes(state->interface));
@@ -571,6 +580,14 @@ static void phylink_major_config(struct phylink *pl, bool restart,
 				    ERR_PTR(err));
 			return;
 		}
+	}
+
+	if (pl->mac_ops->mac_select_pcs) {
+		pcs = pl->mac_ops->mac_select_pcs(pl->config, state->interface);
+		if (!pcs)
+			phylink_err(pl, "mac_select_pcs unexpectedly failed\n");
+		else
+			phylink_set_pcs(pl, pcs);
 	}
 
 	phylink_mac_config(pl, state);
