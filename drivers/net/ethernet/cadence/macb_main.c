@@ -882,6 +882,24 @@ static int macb_mii_probe(struct net_device *dev)
 		bp->phylink_config.get_fixed_state = macb_get_pcs_fixed_state;
 	}
 
+	/* We only support MII, RMII, GMII, RGMII & SGMII. */
+	__set_bit(PHY_INTERFACE_MODE_MII,
+		  bp->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_RMII,
+		  bp->phylink_config.supported_interfaces);
+	__set_bit(PHY_INTERFACE_MODE_SGMII,
+		  bp->phylink_config.supported_interfaces);
+
+	if (macb_is_gem(bp)) {
+		__set_bit(PHY_INTERFACE_MODE_GMII,
+			  bp->phylink_config.supported_interfaces);
+		phy_interface_set_rgmii(bp->phylink_config.supported_interfaces);
+	}
+
+	if (bp->caps & MACB_CAPS_HIGH_SPEED && bp->caps & MACB_CAPS_PCS)
+		__set_bit(PHY_INTERFACE_MODE_10GBASER,
+			  bp->phylink_config.supported_interfaces);
+
 	bp->phylink = phylink_create(&bp->phylink_config, bp->pdev->dev.fwnode,
 				     bp->phy_interface, &macb_phylink_ops);
 	if (IS_ERR(bp->phylink)) {
