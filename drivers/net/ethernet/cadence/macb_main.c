@@ -519,12 +519,10 @@ static void macb_validate(struct phylink_config *config,
 	phylink_set(mask, Asym_Pause);
 
 	if (bp->caps & MACB_CAPS_GIGABIT_MODE_AVAILABLE &&
-	    (state->interface == PHY_INTERFACE_MODE_NA ||
-	     state->interface == PHY_INTERFACE_MODE_10GBASER)) {
+	    state->interface == PHY_INTERFACE_MODE_10GBASER) {
 		phylink_set_10g_modes(mask);
 		phylink_set(mask, 10000baseKR_Full);
-		if (state->interface != PHY_INTERFACE_MODE_NA)
-			goto out;
+		goto out;
 	}
 
 	phylink_set(mask, 10baseT_Half);
@@ -533,8 +531,7 @@ static void macb_validate(struct phylink_config *config,
 	phylink_set(mask, 100baseT_Full);
 
 	if (bp->caps & MACB_CAPS_GIGABIT_MODE_AVAILABLE &&
-	    (state->interface == PHY_INTERFACE_MODE_NA ||
-	     state->interface == PHY_INTERFACE_MODE_GMII ||
+	    (state->interface == PHY_INTERFACE_MODE_GMII ||
 	     state->interface == PHY_INTERFACE_MODE_SGMII ||
 	     phy_interface_mode_is_rgmii(state->interface))) {
 		phylink_set(mask, 1000baseT_Full);
