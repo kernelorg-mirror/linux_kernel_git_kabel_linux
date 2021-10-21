@@ -609,6 +609,8 @@ struct mv88e6xxx_ops {
 	const struct mv88e6xxx_ptp_ops *ptp_ops;
 
 	/* Phylink */
+	void (*phylink_get_interfaces)(struct mv88e6xxx_chip *chip, int port,
+				       unsigned long *supported);
 	void (*phylink_validate)(struct mv88e6xxx_chip *chip, int port,
 				 unsigned long *mask,
 				 struct phylink_link_state *state);
