@@ -1021,6 +1021,23 @@ struct phylink *phylink_create(struct phylink_config *config,
 }
 EXPORT_SYMBOL_GPL(phylink_create);
 
+static void phylink_pcs_disable(struct phylink_pcs *pcs,
+				const struct phylink_pcs_ops *ops)
+{
+	if (ops && ops->pcs_disable)
+		ops->pcs_disable(pcs);
+}
+
+static int phylink_pcs_enable(struct phylink_pcs *pcs)
+{
+	int err = 0;
+
+	if (pcs && pcs->ops->pcs_enable)
+		err = pcs->ops->pcs_enable(pcs);
+
+	return err;
+}
+
 /**
  * phylink_set_pcs() - set the current PCS for phylink to use
  * @pl: a pointer to a &struct phylink returned from phylink_create()
@@ -1037,6 +1054,19 @@ EXPORT_SYMBOL_GPL(phylink_create);
  */
 void phylink_set_pcs(struct phylink *pl, struct phylink_pcs *pcs)
 {
+	if (pl->pcs != pcs || pl->pcs_ops != pcs->ops) {
+		/* PCS has changed */
+		if (!pl->phylink_disable_state) {
+			/* Phylink is currently started, disable the old PCS
+			 * and enable the new PCS.
+			 */
+			phylink_pcs_disable(pl->pcs, pl->pcs_ops);
+			phylink_pcs_enable(pcs);
+		} else {
+			/* Phylink is currently stopped, disable the new PCS */
+			phylink_pcs_disable(pcs, pcs->ops);
+		}
+	}
 	pl->pcs = pcs;
 	pl->pcs_ops = pcs->ops;
 }
@@ -1392,6 +1422,8 @@ void phylink_start(struct phylink *pl)
 	 */
 	phylink_mac_initial_config(pl, true);
 
+	phylink_pcs_enable(pl->pcs);
+
 	phylink_enable_and_run_resolve(pl, PHYLINK_DISABLE_STOPPED);
 
 	if (pl->cfg_link_an_mode == MLO_AN_FIXED && pl->link_gpio) {
@@ -1456,6 +1488,8 @@ void phylink_stop(struct phylink *pl)
 	}
 
 	phylink_run_resolve_and_disable(pl, PHYLINK_DISABLE_STOPPED);
+
+	phylink_pcs_disable(pl->pcs, pl->pcs_ops);
 }
 EXPORT_SYMBOL_GPL(phylink_stop);
 

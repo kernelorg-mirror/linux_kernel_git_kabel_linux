@@ -363,6 +363,8 @@ struct phylink_pcs {
  *               (where necessary).
  */
 struct phylink_pcs_ops {
+	int (*pcs_enable)(struct phylink_pcs *pcs);
+	void (*pcs_disable)(struct phylink_pcs *pcs);
 	void (*pcs_get_state)(struct phylink_pcs *pcs,
 			      struct phylink_link_state *state);
 	int (*pcs_config)(struct phylink_pcs *pcs, unsigned int mode,
