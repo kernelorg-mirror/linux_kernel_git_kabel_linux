@@ -170,7 +170,7 @@
 };
 
 &eth1 {
-	phy-mode = "2500base-x";
+	phy-mode = "2500base-x", "1000base-x", "sgmii";
 	managed = "in-band-status";
 	phys = <&comphy0 1>;
 };
@@ -396,14 +396,14 @@
 				reg = <0x9>;
 				label = "cpu";
 				ethernet = <&eth1>;
-				phy-mode = "2500base-x";
+				phy-mode = "2500base-x", "1000base-x", "sgmii";
 				managed = "in-band-status";
 			};
 
 			switch0port10: port@a {
 				reg = <0xa>;
 				label = "dsa";
-				phy-mode = "2500base-x";
+				phy-mode = "2500base-x", "1000base-x", "sgmii";
 				managed = "in-band-status";
 				link = <&switch1port9 &switch2port9>;
 				status = "disabled";
@@ -413,7 +413,7 @@
 				reg = <0xa>;
 				label = "sfp";
 				sfp = <&sfp>;
-				phy-mode = "sgmii";
+				phy-mode = "sgmii", "1000base-x", "2500base-x";
 				managed = "in-band-status";
 				status = "disabled";
 			};
@@ -480,7 +480,7 @@
 			port@5 {
 				reg = <0x5>;
 				label = "cpu";
-				phy-mode = "2500base-x";
+				phy-mode = "2500base-x", "1000base-x", "sgmii";
 				managed = "in-band-status";
 				ethernet = <&eth1>;
 			};
@@ -587,7 +587,7 @@
 			switch1port9: port@9 {
 				reg = <0x9>;
 				label = "dsa";
-				phy-mode = "2500base-x";
+				phy-mode = "2500base-x", "1000base-x", "sgmii";
 				managed = "in-band-status";
 				link = <&switch0port10>;
 			};
@@ -595,7 +595,7 @@
 			switch1port10: port@a {
 				reg = <0xa>;
 				label = "dsa";
-				phy-mode = "2500base-x";
+				phy-mode = "2500base-x", "1000base-x", "sgmii";
 				managed = "in-band-status";
 				link = <&switch2port9>;
 				status = "disabled";
@@ -605,7 +605,7 @@
 				reg = <0xa>;
 				label = "sfp";
 				sfp = <&sfp>;
-				phy-mode = "sgmii";
+				phy-mode = "sgmii", "1000base-x", "2500base-x";
 				managed = "in-band-status";
 				status = "disabled";
 			};
@@ -672,7 +672,7 @@
 			port@5 {
 				reg = <0x5>;
 				label = "dsa";
-				phy-mode = "2500base-x";
+				phy-mode = "2500base-x", "1000base-x", "sgmii";
 				managed = "in-band-status";
 				link = <&switch0port10>;
 			};
@@ -779,7 +779,7 @@
 			switch2port9: port@9 {
 				reg = <0x9>;
 				label = "dsa";
-				phy-mode = "2500base-x";
+				phy-mode = "2500base-x", "1000base-x", "sgmii";
 				managed = "in-band-status";
 				link = <&switch1port10 &switch0port10>;
 			};
@@ -788,7 +788,7 @@
 				reg = <0xa>;
 				label = "sfp";
 				sfp = <&sfp>;
-				phy-mode = "sgmii";
+				phy-mode = "sgmii", "1000base-x", "2500base-x";
 				managed = "in-band-status";
 				status = "disabled";
 			};
@@ -855,7 +855,7 @@
 			port@5 {
 				reg = <0x5>;
 				label = "dsa";
-				phy-mode = "2500base-x";
+				phy-mode = "2500base-x", "1000base-x", "sgmii";
 				managed = "in-band-status";
 				link = <&switch1port10 &switch0port10>;
 			};
