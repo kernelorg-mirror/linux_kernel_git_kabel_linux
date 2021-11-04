@@ -156,7 +156,7 @@
 	 * handle and add managed = "in-band-status" property.
 	 */
 	status = "okay";
-	phy-mode = "sgmii";
+	phy-mode = "sgmii", "1000base-x", "2500base-x";
 	phy-handle = <&phy1>;
 	phys = <&comphy5 2>;
 	sfp = <&sfp>;
