@@ -217,6 +217,12 @@ bool sfp_may_have_phy(struct sfp_bus *bus, const struct sfp_eeprom_id *id)
 		}
 	}
 
+	if (((!memcmp(id->base.vendor_name, "OEM             ", 16) ||
+	      !memcmp(id->base.vendor_name, "Turris          ", 16)) &&
+	     (!memcmp(id->base.vendor_pn, "SFP-10G-T       ", 16) ||
+	      !memcmp(id->base.vendor_pn, "RTSFP-10", 8))))
+		return true;
+
 	return false;
 }
 EXPORT_SYMBOL_GPL(sfp_may_have_phy);
