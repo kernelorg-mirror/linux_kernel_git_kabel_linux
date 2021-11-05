@@ -157,8 +157,6 @@ struct mv3310_chip {
 };
 
 struct mv3310_priv {
-	DECLARE_PHY_INTERFACE_MASK(supported_interfaces);
-
 	u32 firmware_ver;
 	bool has_downshift;
 	bool rate_match;
@@ -549,7 +547,7 @@ static int mv3310_probe(struct phy_device *phydev)
 	if (ret)
 		return ret;
 
-	chip->init_supported_interfaces(priv->supported_interfaces);
+	chip->init_supported_interfaces(phydev->supported_interfaces);
 
 	return phy_sfp_probe(phydev, &mv3310_sfp_ops);
 }
@@ -765,7 +763,6 @@ static int mv3340_init_interface(struct phy_device *phydev, int mactype)
 
 static int mv3310_config_init(struct phy_device *phydev)
 {
-	struct mv3310_priv *priv = dev_get_drvdata(&phydev->mdio.dev);
 	const struct mv3310_chip *chip = to_mv3310_chip(phydev);
 	DECLARE_PHY_INTERFACE_MASK(interfaces);
 	int err, mactype;
@@ -775,7 +772,7 @@ static int mv3310_config_init(struct phy_device *phydev)
 
 	/* Check that there is at least one compatible PHY interface type */
 	phy_interface_and(interfaces, phydev->host_interfaces,
-			  priv->supported_interfaces);
+			  phydev->supported_interfaces);
 	if (phy_interface_empty(interfaces))
 		return -ENODEV;
 
