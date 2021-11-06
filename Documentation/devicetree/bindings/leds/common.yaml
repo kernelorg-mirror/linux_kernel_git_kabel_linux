@@ -30,11 +30,15 @@ properties:
     $ref: /schemas/types.yaml#/definitions/uint32-array
 
   function:
-    description:
-      LED function. Use one of the LED_FUNCTION_* prefixed definitions
-      from the header include/dt-bindings/leds/common.h. If there is no
-      matching LED_FUNCTION available, add a new one.
-    $ref: /schemas/types.yaml#/definitions/string
+    description: |
+      LED function. Use the LED_FUNCTION_* prefixed definitions from the
+      header include/dt-bindings/leds/common.h. If there is no matching
+      LED_FUNCTION available, add a new one.
+      It is possible for a LED to have multiple functions, for example "link"
+      and "activity".
+    $ref: /schemas/types.yaml#/definitions/string-array
+    minItems: 1
+    maxItems: 5
 
   color:
     description:
@@ -48,7 +52,8 @@ properties:
   function-enumerator:
     description:
       Integer to be used when more than one instance of the same function is
-      needed, differing only with an ordinal number.
+      needed, differing only with an ordinal number. If there are multiple
+      functions, this enumerator concerns only the first function.
     $ref: /schemas/types.yaml#/definitions/uint32
 
   label:
