@@ -1488,6 +1488,7 @@ static bool mvpp2_port_supports_rgmii(struct mvpp2_port *port)
 static bool mvpp2_is_xlg(phy_interface_t interface)
 {
 	return interface == PHY_INTERFACE_MODE_10GBASER ||
+	       interface == PHY_INTERFACE_MODE_5GBASER ||
 	       interface == PHY_INTERFACE_MODE_XAUI;
 }
 
@@ -1627,6 +1628,7 @@ static int mvpp22_gop_init(struct mvpp2_port *port, phy_interface_t interface)
 	case PHY_INTERFACE_MODE_2500BASEX:
 		mvpp22_gop_init_sgmii(port);
 		break;
+	case PHY_INTERFACE_MODE_5GBASER:
 	case PHY_INTERFACE_MODE_10GBASER:
 		if (!mvpp2_port_supports_xlg(port))
 			goto invalid_conf;
@@ -2186,6 +2188,7 @@ static void mvpp22_pcs_reset_deassert(struct mvpp2_port *port,
 	xpcs = priv->iface_base + MVPP22_XPCS_BASE(port->gop_id);
 
 	switch (interface) {
+	case PHY_INTERFACE_MODE_5GBASER:
 	case PHY_INTERFACE_MODE_10GBASER:
 		val = readl(mpcs + MVPP22_MPCS_CLK_RESET);
 		val |= MAC_CLK_RESET_MAC | MAC_CLK_RESET_SD_RX |
@@ -6118,7 +6121,10 @@ static void mvpp2_xlg_pcs_get_state(struct phylink_pcs *pcs,
 	struct mvpp2_port *port = mvpp2_pcs_to_port(pcs);
 	u32 val;
 
-	state->speed = SPEED_10000;
+	if (port->phy_interface == PHY_INTERFACE_MODE_5GBASER)
+		state->speed = SPEED_5000;
+	else
+		state->speed = SPEED_10000;
 	state->duplex = 1;
 	state->an_complete = 1;
 
@@ -6280,6 +6286,11 @@ static void mvpp2_phylink_validate(struct phylink_config *config,
 	}
 
 	switch (state->interface) {
+	case PHY_INTERFACE_MODE_5GBASER:
+		if (mvpp2_port_supports_xlg(port))
+			phylink_set(mask, 5000baseT_Full);
+		break;
+
 	case PHY_INTERFACE_MODE_10GBASER:
 	case PHY_INTERFACE_MODE_XAUI:
 		if (mvpp2_port_supports_xlg(port)) {
@@ -6913,10 +6924,26 @@ static int mvpp2_port_probe(struct platform_device *pdev,
 		port->phylink_config.type = PHYLINK_NETDEV;
 
 		if (mvpp2_port_supports_xlg(port)) {
-			__set_bit(PHY_INTERFACE_MODE_10GBASER,
-				  port->phylink_config.supported_interfaces);
-			__set_bit(PHY_INTERFACE_MODE_XAUI,
-				  port->phylink_config.supported_interfaces);
+			if (comphy) {
+				/* If a COMPHY is present, we can support any of
+				 * the serdes modes and switch between them.
+				 */
+				__set_bit(PHY_INTERFACE_MODE_5GBASER,
+					  port->phylink_config.supported_interfaces);
+				__set_bit(PHY_INTERFACE_MODE_10GBASER,
+					  port->phylink_config.supported_interfaces);
+				__set_bit(PHY_INTERFACE_MODE_XAUI,
+					  port->phylink_config.supported_interfaces);
+			} else if (phy_mode == PHY_INTERFACE_MODE_5GBASER) {
+				__set_bit(PHY_INTERFACE_MODE_5GBASER,
+					  port->phylink_config.supported_interfaces);
+			} else if (phy_mode == PHY_INTERFACE_MODE_10GBASER) {
+				__set_bit(PHY_INTERFACE_MODE_10GBASER,
+					  port->phylink_config.supported_interfaces);
+			} else if (phy_mode == PHY_INTERFACE_MODE_XAUI) {
+				__set_bit(PHY_INTERFACE_MODE_XAUI,
+					  port->phylink_config.supported_interfaces);
+			}
 		}
 
 		if (mvpp2_port_supports_rgmii(port))
