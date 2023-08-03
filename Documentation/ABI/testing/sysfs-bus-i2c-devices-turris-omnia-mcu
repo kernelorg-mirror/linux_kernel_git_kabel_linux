@@ -1,0 +1,45 @@
+What:		/sys/bus/i2c/devices/<mcu_device>/fw_features
+Date:		November 2023
+KernelVersion:	6.7
+Contact:	Marek Behún <kabel@kernel.org>
+Description:	(RO) Newer versions of the microcontroller firmware report the
+		features they support. These can be read from this file. If the
+		MCU firmware is too old, this file reads 0x0.
+
+		Format: 0x%x.
+
+What:		/sys/bus/i2c/devices/<mcu_device>/fw_version_hash_application
+Date:		November 2023
+KernelVersion:	6.7
+Contact:	Marek Behún <kabel@kernel.org>
+Description:	(RO) Contains the version hash (commit hash) of the application
+		part of the microcontroller firmware.
+
+		Format: %s.
+
+What:		/sys/bus/i2c/devices/<mcu_device>/fw_version_hash_bootloader
+Date:		November 2023
+KernelVersion:	6.7
+Contact:	Marek Behún <kabel@kernel.org>
+Description:	(RO) Contains the version hash (commit hash) of the bootloader
+		part of the microcontroller firmware.
+
+		Format: %s.
+
+What:		/sys/bus/i2c/devices/<mcu_device>/mcu_type
+Date:		November 2023
+KernelVersion:	6.7
+Contact:	Marek Behún <kabel@kernel.org>
+Description:	(RO) Contains the microcontroller type (STM32, GD32, MKL).
+
+		Format: %s.
+
+What:		/sys/bus/i2c/devices/<mcu_device>/reset_selector
+Date:		November 2023
+KernelVersion:	6.7
+Contact:	Marek Behún <kabel@kernel.org>
+Description:	(RO) Contains the selected factory reset level, determined by
+		how long the rear reset button was held by the user during board
+		reset.
+
+		Format: %i.
