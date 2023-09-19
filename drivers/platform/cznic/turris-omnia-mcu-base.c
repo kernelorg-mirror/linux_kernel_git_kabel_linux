@@ -105,7 +105,16 @@ static struct attribute *omnia_mcu_attrs[] = {
 	&dev_attr_reset_selector.attr,
 	NULL
 };
-ATTRIBUTE_GROUPS(omnia_mcu);
+
+static const struct attribute_group omnia_mcu_base_group = {
+	.attrs = omnia_mcu_attrs,
+};
+
+static const struct attribute_group *omnia_mcu_groups[] = {
+	&omnia_mcu_base_group,
+	&omnia_mcu_gpio_group,
+	NULL
+};
 
 static void omnia_mcu_print_version_hash(struct omnia_mcu *mcu, bool bootloader)
 {
@@ -229,7 +238,7 @@ static int omnia_mcu_probe(struct i2c_client *client)
 		return dev_err_probe(dev, err,
 				     "Cannot determine MCU supported features\n");
 
-	return 0;
+	return omnia_mcu_register_gpiochip(mcu);
 }
 
 static const struct of_device_id of_omnia_mcu_match[] = {
