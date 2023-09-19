@@ -1,3 +1,19 @@
+What:		/sys/bus/i2c/devices/<mcu_device>/front_button_mode
+Date:		November 2023
+KernelVersion:	6.7
+Contact:	Marek Behún <kabel@kernel.org>
+Description:	(RW) The front button on the Turris Omnia router can be
+		configured either to change the intensity of all the LEDs on the
+		front panel, or to send the press event to the CPU as an
+		interrupt.
+
+		This file switches between these two modes:
+		- "mcu" makes the button press event be handled by the MCU to
+		  change the LEDs panel intensity.
+		- "cpu" makes the button press event be handled by the CPU.
+
+		Format: %s.
+
 What:		/sys/bus/i2c/devices/<mcu_device>/fw_features
 Date:		November 2023
 KernelVersion:	6.7
