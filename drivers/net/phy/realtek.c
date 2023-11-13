@@ -924,7 +924,7 @@ static int rtl822x_cg_config_aneg(struct phy_device *phydev)
 
 static int rtl822x_cg_read_status(struct phy_device *phydev)
 {
-	int val;
+	int ret, val;
 
 	if (phydev->autoneg == AUTONEG_ENABLE) {
 		val = phy_read_mmd(phydev, MDIO_MMD_VEND2, RTL8221_GANLPAR);
@@ -934,7 +934,27 @@ static int rtl822x_cg_read_status(struct phy_device *phydev)
 		mii_stat1000_mod_linkmode_lpa_t(phydev->lp_advertising, val);
 	}
 
-	return genphy_c45_read_status(phydev);
+	ret = genphy_c45_read_status(phydev);
+	if (ret < 0)
+		return ret;
+
+	/* PHY changes SerDes mode between 2500base-x and sgmii based on
+	 * copper speed
+	 */
+	switch (phydev->speed) {
+	case SPEED_2500:
+		phydev->interface = PHY_INTERFACE_MODE_2500BASEX;
+		break;
+	case SPEED_1000:
+	case SPEED_100:
+	case SPEED_10:
+		phydev->interface = PHY_INTERFACE_MODE_SGMII;
+		break;
+	default:
+		break;
+	}
+
+	return 0;
 }
 
 static bool rtlgen_supports_2_5gbps(struct phy_device *phydev)
