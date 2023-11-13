@@ -54,6 +54,11 @@
 						 RTL8201F_ISR_LINK)
 #define RTL8201F_IER				0x13
 
+#define RTL8221_VND1_SERDES_OPTION			0x697a
+#define RTL8221_VND1_SERDES_OPTION_MODE_MASK		GENMASK(5, 0)
+#define RTL8221_VND1_SERDES_OPTION_MODE_2500BASEX_SGMII	0
+#define RTL8221_VND1_SERDES_OPTION_MODE_2500BASEX	2
+
 #define RTL8221_GBCR				0xa412
 #define RTL8221_GANLPAR				0xa414
 
@@ -853,6 +858,44 @@ static int rtl822x_read_status(struct phy_device *phydev)
 	return rtlgen_get_speed(phydev);
 }
 
+static int rtl822x_cg_config_init(struct phy_device *phydev)
+{
+	u16 mode;
+	int ret;
+
+	if (phydev->interface == PHY_INTERFACE_MODE_2500BASEX &&
+	    !phydev->is_c45)
+		mode = RTL8221_VND1_SERDES_OPTION_MODE_2500BASEX;
+	else if (phydev->interface == PHY_INTERFACE_MODE_SGMII)
+		mode = RTL8221_VND1_SERDES_OPTION_MODE_2500BASEX_SGMII;
+	else
+		return 0;
+
+	ret = phy_write_mmd(phydev, MDIO_MMD_VEND1, 0x75f3, 0);
+	if (ret < 0)
+		return ret;
+
+	ret = phy_modify_mmd_changed(phydev, MDIO_MMD_VEND1,
+				     RTL8221_VND1_SERDES_OPTION,
+				     RTL8221_VND1_SERDES_OPTION_MODE_MASK,
+				     mode);
+	if (ret < 0)
+		return ret;
+
+	/* the following 3 writes into SerDes control are needed for
+	 * 2500base-x
+	 */
+	ret = phy_write_mmd(phydev, MDIO_MMD_VEND1, 0x6a04, 0x0503);
+	if (ret < 0)
+		return ret;
+
+	ret = phy_write_mmd(phydev, MDIO_MMD_VEND1, 0x6f10, 0xd455);
+	if (ret < 0)
+		return ret;
+
+	return phy_write_mmd(phydev, MDIO_MMD_VEND1, 0x6f11, 0x8020);
+}
+
 static int rtl822x_cg_config_aneg(struct phy_device *phydev)
 {
 	bool changed = false;
@@ -1087,6 +1130,7 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc838),
 		.name		= "RTL8226-CG 2.5Gbps PHY",
+		.config_init	= rtl822x_cg_config_init,
 		.config_aneg	= rtl822x_cg_config_aneg,
 		.read_status	= rtl822x_cg_read_status,
 		.suspend	= genphy_c45_pma_suspend,
@@ -1096,6 +1140,7 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc848),
 		.name		= "RTL8226B-CG_RTL8221B-CG 2.5Gbps PHY",
+		.config_init	= rtl822x_cg_config_init,
 		.config_aneg	= rtl822x_cg_config_aneg,
 		.read_status	= rtl822x_cg_read_status,
 		.suspend	= genphy_c45_pma_suspend,
@@ -1105,6 +1150,7 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc849),
 		.name		= "RTL8221B-VB-CG 2.5Gbps PHY",
+		.config_init	= rtl822x_cg_config_init,
 		.config_aneg	= rtl822x_cg_config_aneg,
 		.read_status	= rtl822x_cg_read_status,
 		.suspend	= genphy_c45_pma_suspend,
@@ -1114,6 +1160,7 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc84a),
 		.name		= "RTL8221B-VM-CG 2.5Gbps PHY",
+		.config_init	= rtl822x_cg_config_init,
 		.config_aneg	= rtl822x_cg_config_aneg,
 		.read_status	= rtl822x_cg_read_status,
 		.suspend	= genphy_c45_pma_suspend,
