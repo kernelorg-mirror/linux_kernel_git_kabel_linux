@@ -54,6 +54,8 @@
 						 RTL8201F_ISR_LINK)
 #define RTL8201F_IER				0x13
 
+#define RTL8221_GBCR				0xa412
+
 #define RTL8366RB_POWER_SAVE			0x15
 #define RTL8366RB_POWER_SAVE_ON			BIT(12)
 
@@ -850,6 +852,32 @@ static int rtl822x_read_status(struct phy_device *phydev)
 	return rtlgen_get_speed(phydev);
 }
 
+static int rtl822x_cg_config_aneg(struct phy_device *phydev)
+{
+	bool changed = false;
+	u16 val;
+	int ret;
+
+	if (phydev->autoneg == AUTONEG_DISABLE)
+		return genphy_c45_pma_setup_forced(phydev);
+
+	ret = genphy_c45_an_config_aneg(phydev);
+	if (ret < 0)
+		return ret;
+	if (ret > 0)
+		changed = true;
+
+	val = linkmode_adv_to_mii_ctrl1000_t(phydev->advertising);
+	ret = phy_modify_mmd_changed(phydev, MDIO_MMD_VEND2, RTL8221_GBCR,
+				     ADVERTISE_1000FULL, val);
+	if (ret < 0)
+		return ret;
+	if (ret > 0)
+		changed = true;
+
+	return genphy_c45_check_and_restart_aneg(phydev, changed);
+}
+
 static bool rtlgen_supports_2_5gbps(struct phy_device *phydev)
 {
 	int val;
@@ -1043,7 +1071,7 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc838),
 		.name		= "RTL8226-CG 2.5Gbps PHY",
-		.config_aneg	= rtl822x_config_aneg,
+		.config_aneg	= rtl822x_cg_config_aneg,
 		.read_status	= rtl822x_read_status,
 		.suspend	= genphy_suspend,
 		.resume		= rtlgen_resume,
@@ -1052,7 +1080,7 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc848),
 		.name		= "RTL8226B-CG_RTL8221B-CG 2.5Gbps PHY",
-		.config_aneg	= rtl822x_config_aneg,
+		.config_aneg	= rtl822x_cg_config_aneg,
 		.read_status	= rtl822x_read_status,
 		.suspend	= genphy_suspend,
 		.resume		= rtlgen_resume,
@@ -1061,7 +1089,7 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc849),
 		.name		= "RTL8221B-VB-CG 2.5Gbps PHY",
-		.config_aneg	= rtl822x_config_aneg,
+		.config_aneg	= rtl822x_cg_config_aneg,
 		.read_status	= rtl822x_read_status,
 		.suspend	= genphy_suspend,
 		.resume		= rtlgen_resume,
@@ -1070,7 +1098,7 @@ static struct phy_driver realtek_drvs[] = {
 	}, {
 		PHY_ID_MATCH_EXACT(0x001cc84a),
 		.name		= "RTL8221B-VM-CG 2.5Gbps PHY",
-		.config_aneg	= rtl822x_config_aneg,
+		.config_aneg	= rtl822x_cg_config_aneg,
 		.read_status	= rtl822x_read_status,
 		.suspend	= genphy_suspend,
 		.resume		= rtlgen_resume,
