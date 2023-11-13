@@ -55,6 +55,7 @@
 #define RTL8201F_IER				0x13
 
 #define RTL8221_GBCR				0xa412
+#define RTL8221_GANLPAR				0xa414
 
 #define RTL8366RB_POWER_SAVE			0x15
 #define RTL8366RB_POWER_SAVE_ON			BIT(12)
@@ -878,6 +879,21 @@ static int rtl822x_cg_config_aneg(struct phy_device *phydev)
 	return genphy_c45_check_and_restart_aneg(phydev, changed);
 }
 
+static int rtl822x_cg_read_status(struct phy_device *phydev)
+{
+	int val;
+
+	if (phydev->autoneg == AUTONEG_ENABLE) {
+		val = phy_read_mmd(phydev, MDIO_MMD_VEND2, RTL8221_GANLPAR);
+		if (val < 0)
+			return val;
+
+		mii_stat1000_mod_linkmode_lpa_t(phydev->lp_advertising, val);
+	}
+
+	return genphy_c45_read_status(phydev);
+}
+
 static bool rtlgen_supports_2_5gbps(struct phy_device *phydev)
 {
 	int val;
@@ -1072,7 +1088,7 @@ static struct phy_driver realtek_drvs[] = {
 		PHY_ID_MATCH_EXACT(0x001cc838),
 		.name		= "RTL8226-CG 2.5Gbps PHY",
 		.config_aneg	= rtl822x_cg_config_aneg,
-		.read_status	= rtl822x_read_status,
+		.read_status	= rtl822x_cg_read_status,
 		.suspend	= genphy_suspend,
 		.resume		= rtlgen_resume,
 		.read_page	= rtl821x_read_page,
@@ -1081,7 +1097,7 @@ static struct phy_driver realtek_drvs[] = {
 		PHY_ID_MATCH_EXACT(0x001cc848),
 		.name		= "RTL8226B-CG_RTL8221B-CG 2.5Gbps PHY",
 		.config_aneg	= rtl822x_cg_config_aneg,
-		.read_status	= rtl822x_read_status,
+		.read_status	= rtl822x_cg_read_status,
 		.suspend	= genphy_suspend,
 		.resume		= rtlgen_resume,
 		.read_page	= rtl821x_read_page,
@@ -1090,7 +1106,7 @@ static struct phy_driver realtek_drvs[] = {
 		PHY_ID_MATCH_EXACT(0x001cc849),
 		.name		= "RTL8221B-VB-CG 2.5Gbps PHY",
 		.config_aneg	= rtl822x_cg_config_aneg,
-		.read_status	= rtl822x_read_status,
+		.read_status	= rtl822x_cg_read_status,
 		.suspend	= genphy_suspend,
 		.resume		= rtlgen_resume,
 		.read_page	= rtl821x_read_page,
@@ -1099,7 +1115,7 @@ static struct phy_driver realtek_drvs[] = {
 		PHY_ID_MATCH_EXACT(0x001cc84a),
 		.name		= "RTL8221B-VM-CG 2.5Gbps PHY",
 		.config_aneg	= rtl822x_cg_config_aneg,
-		.read_status	= rtl822x_read_status,
+		.read_status	= rtl822x_cg_read_status,
 		.suspend	= genphy_suspend,
 		.resume		= rtlgen_resume,
 		.read_page	= rtl821x_read_page,
